@@ -1,5 +1,10 @@
 # CLAUDE.MD -- Academic Project Development with Claude Code
 
+<!-- HOW TO USE: Replace [BRACKETED PLACEHOLDERS] with your project info.
+     Customize Beamer environments and CSS classes for your theme.
+     Keep this file under ~150 lines — Claude loads it every session.
+     See the guide at docs/workflow-guide.html for full documentation. -->
+
 **Project:** ASH Constraint Analysis
 **Institution:** A Safe Haven
 **Branch:** main
@@ -10,7 +15,7 @@
 
 - **Plan first** -- enter plan mode before non-trivial tasks; save plans to `quality_reports/plans/`
 - **Verify after** -- compile/render and confirm output at the end of every task
-- **Single source of truth** -- R analysis scripts (`scripts/R/`) are authoritative for data and results; Beamer slides and Quarto reports are derived presentation layers
+- **Single source of truth** -- Beamer `.tex` is authoritative; Quarto `.qmd` derives from it
 - **Quality gates** -- nothing ships below 80/100
 - **[LEARN] tags** -- when corrected, save `[LEARN:category] wrong → right` to MEMORY.md
 
@@ -19,34 +24,20 @@
 ## Folder Structure
 
 ```
-ASH-Constraint-Analysis/
+[YOUR-PROJECT]/
 ├── CLAUDE.MD                    # This file
 ├── .claude/                     # Rules, skills, agents, hooks
 ├── Bibliography_base.bib        # Centralized bibliography
-├── Figures/                     # Generated plots and images
-├── Preambles/header.tex         # LaTeX headers (when created)
-├── Slides/                      # Beamer .tex files (presentations)
-├── Quarto/                      # RevealJS .qmd + HTML reports + theme
+├── Figures/                     # Figures and images
+├── Preambles/header.tex         # LaTeX headers
+├── Slides/                      # Beamer .tex files
+├── Quarto/                      # RevealJS .qmd files + theme
 ├── docs/                        # GitHub Pages (auto-generated)
-├── scripts/
-│   ├── R/                       # Analysis pipeline
-│   │   ├── config.R             # Centralized config (year, periods, paths)
-│   │   ├── SR_Report_Framework.R # Registry-driven report orchestrator
-│   │   ├── SR_FQ_Reshape.R      # Salesforce data reshaping
-│   │   ├── SR_FQ_PlotFunctions.R # Plotting utilities
-│   │   ├── filter_period.R      # Period filtering
-│   │   ├── period_comparison.R  # Period-over-period comparison
-│   │   ├── input_effects.R      # Input effects modeling
-│   │   ├── staffing_levels.R    # Excel schedule → tidy staffing
-│   │   ├── staffing_impact.R    # Staffing → closure analysis
-│   │   ├── staffing_compliance.R # Staffing → compliance analysis
-│   │   └── Data/                # Raw data + mappings (gitignored)
-│   ├── quality_score.py         # Quality scoring (0-100)
-│   └── sync_to_docs.sh          # Quarto → GitHub Pages deployment
+├── scripts/                     # Utility scripts + R code + Synthetic R Data
 ├── quality_reports/             # Plans, session logs, merge reports
-├── explorations/                # Research sandbox
+├── explorations/                # Research sandbox (see rules)
 ├── templates/                   # Session log, quality report templates
-└── master_supporting_docs/      # Papers and reference materials
+└── master_supporting_docs/      # Papers and existing slides
 ```
 
 ---
@@ -54,18 +45,14 @@ ASH-Constraint-Analysis/
 ## Commands
 
 ```bash
-# R analysis pipeline
-Rscript scripts/R/config.R
-
 # LaTeX (3-pass, XeLaTeX only)
-cd Slides
-xelatex -interaction=nonstopmode file.tex
-bibtex file
-xelatex -interaction=nonstopmode file.tex
-xelatex -interaction=nonstopmode file.tex
+cd Slides && TEXINPUTS=../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode file.tex
+BIBINPUTS=..:$BIBINPUTS bibtex file
+TEXINPUTS=../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode file.tex
+TEXINPUTS=../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode file.tex
 
-# Quarto render
-quarto render Quarto/file.qmd
+# Deploy Quarto to GitHub Pages
+./scripts/sync_to_docs.sh LectureN
 
 # Quality score
 python scripts/quality_score.py Quarto/file.qmd
@@ -109,35 +96,38 @@ python scripts/quality_score.py Quarto/file.qmd
 
 ---
 
-## Beamer Custom Environments
+<!-- CUSTOMIZE: Replace the example entries below with your own
+     Beamer environments and Quarto CSS classes. These are examples
+     from the original project — delete them and add yours. -->
 
-<!-- TBD: Will define environments as slides are built.
-     Candidate environments: findingbox, constraintbox, recommendationbox -->
+## Beamer Custom Environments
 
 | Environment       | Effect        | Use Case       |
 |-------------------|---------------|----------------|
-| TBD | -- | -- |
+| `[your-env]`      | [Description] | [When to use]  |
+
+<!-- Example entries (delete and replace with yours):
+| `keybox` | Gold background box | Key points |
+| `highlightbox` | Gold left-accent box | Highlights |
+| `definitionbox[Title]` | Blue-bordered titled box | Formal definitions |
+-->
 
 ## Quarto CSS Classes
 
-<!-- TBD: Will define classes as reports/slides are built.
-     Theme file: Quarto/ash-theme.scss -->
-
 | Class              | Effect        | Use Case       |
 |--------------------|---------------|----------------|
-| TBD | -- | -- |
+| `[.your-class]`    | [Description] | [When to use]  |
+
+<!-- Example entries (delete and replace with yours):
+| `.smaller` | 85% font | Dense content slides |
+| `.positive` | Green bold | Good annotations |
+-->
 
 ---
 
 ## Current Project State
 
-| Module | R Script(s) | Beamer | Quarto | Status |
-|--------|-------------|--------|--------|--------|
-| SR Report Framework | `SR_Report_Framework.R`, `SR_FQ_Reshape.R` | -- | -- | Production |
-| Period Filtering | `filter_period.R`, `period_comparison.R` | -- | -- | Production |
-| Staffing Pipeline | `staffing_levels.R` | -- | -- | Production |
-| Staffing Impact | `staffing_impact.R`, `staffing_compliance.R` | -- | -- | Production |
-| Input Effects | `input_effects.R` | -- | -- | Exploratory |
-| Weather Effects | TBD | -- | -- | Not started |
-| Bed Availability | TBD | -- | -- | Not started |
-| Executive Summary | -- | TBD | TBD | Not started |
+| Lecture | Beamer | Quarto | Key Content |
+|---------|--------|--------|-------------|
+| 1: [Topic] | `Lecture01_Topic.tex` | `Lecture1_Topic.qmd` | [Brief description] |
+| 2: [Topic] | `Lecture02_Topic.tex` | -- | [Brief description] |
