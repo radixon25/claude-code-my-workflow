@@ -56,12 +56,13 @@ paths:
 Generated **only at merge time**. Use `templates/quality-report.md` for format.
 Save to `quality_reports/merges/YYYY-MM-DD_[branch-name].md`.
 
-## Tolerance Thresholds (Research)
-
-<!-- Customize for your domain -->
+## Tolerance Thresholds (Operations Analysis)
 
 | Quantity | Tolerance | Rationale |
 |----------|-----------|-----------|
-| Point estimates | [e.g., 1e-6] | [Numerical precision] |
-| Standard errors | [e.g., 1e-4] | [MC variability] |
-| Coverage rates | [e.g., +/- 0.01] | [MC with B reps] |
+| Compliance rates | +/- 0.5% | Rounding in percentage computation |
+| Case counts | Exact match | Integer counts must be deterministic |
+| Staffing levels | Exact match | Derived from discrete schedule data |
+| Regression coefficients | 1e-4 | Numerical precision in GLM fitting |
+| Model p-values | Report exact, flag at 0.05 and 0.10 | Standard significance thresholds |
+| Period-over-period deltas | +/- 0.1% | Floating point in percentage change |
