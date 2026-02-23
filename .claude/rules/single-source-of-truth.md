@@ -7,20 +7,39 @@ paths:
 
 # Single Source of Truth: Enforcement Protocol
 
-**The Beamer `.tex` file is the authoritative source for ALL content.** Everything else is derived.
+**R analysis scripts are the authoritative source for ALL data and results. Beamer and Quarto are derived presentation layers.**
 
 ## The SSOT Chain
 
 ```
-Beamer .tex (SOURCE OF TRUTH)
-  ├── extract_tikz.tex → PDF → SVGs (derived)
-  ├── Quarto .qmd → HTML (derived)
-  ├── Bibliography_base.bib (shared)
-  └── Figures/LectureN/*.rds → plotly charts (data source)
+R Analysis Scripts (DATA & RESULTS SOURCE OF TRUTH)
+  ├── scripts/R/*.R → data/processed/*.rds (computed results)
+  │
+  ├── Beamer .tex (SLIDE SOURCE OF TRUTH for presentations)
+  │   ├── extract_tikz.tex → PDF → SVGs (derived)
+  │   └── Quarto .qmd → HTML (derived from Beamer where both exist)
+  │
+  └── Quarto .qmd (REPORT SOURCE OF TRUTH for HTML reports)
+      └── May exist independently from Beamer for report-only modules
+
+Bibliography_base.bib (shared across both presentation formats)
+Figures/ModuleN/*.rds → plotly charts (data source)
 
 NEVER edit derived artifacts independently.
 ALWAYS propagate changes from source → derived.
 ```
+
+### When Both Beamer and Quarto Exist
+
+The Beamer `.tex` file is the presentation source of truth. Quarto `.qmd` derives from it. See `beamer-quarto-sync.md` for the mandatory sync rule.
+
+### When Only Quarto Exists
+
+For report-only modules (no corresponding Beamer deck), the Quarto `.qmd` is the sole presentation artifact. No sync is required.
+
+### R Scripts Are Always Upstream
+
+If a result changes in an R script, ALL downstream presentation artifacts (both Beamer and Quarto) must be updated to reflect the new result.
 
 ---
 
@@ -59,11 +78,12 @@ Re-extract ALL TikZ diagrams when:
 ## Content Fidelity Checklist
 
 ```
-[ ] Frame count: Beamer frames == Quarto slides
+[ ] Frame count: Beamer frames == Quarto slides (where both exist)
 [ ] Math check: every equation appears with identical notation
 [ ] Citation check: every \cite has a @key in Quarto
 [ ] Environment check: every Beamer box has CSS equivalent
 [ ] Figure check: every \includegraphics has SVG or plotly equivalent
 [ ] No added content: Quarto does not invent slides not in Beamer
 [ ] No dropped content: every Beamer idea appears in Quarto
+[ ] R results match: all numbers trace back to the same .rds file
 ```

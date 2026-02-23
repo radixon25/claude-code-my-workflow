@@ -32,10 +32,12 @@
       "Bash(quarto render *)",
       "Bash(Rscript *)",
       "Bash(python3 *)",
+      "Bash(python *)",
       "Bash(./scripts/sync_to_docs.sh *)",
       "Bash(./scripts/sync_to_docs.sh)",
       "Bash(chmod *)",
       "Bash(open *)",
+      "Bash(start *)",
       "Bash(ls *)",
       "Bash(wc *)",
       "Bash(sort *)",
@@ -51,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify.sh",
+            "command": "python .claude/hooks/run_hook.py notify.py",
             "timeout": 5
           }
         ]
@@ -63,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-files.sh",
+            "command": "python .claude/hooks/run_hook.py protect-files.py",
             "timeout": 5
           }
         ]
@@ -74,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.py",
+            "command": "python .claude/hooks/run_hook.py pre-compact.py",
             "timeout": 10
           }
         ]
@@ -86,7 +88,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-compact-restore.py",
+            "command": "python .claude/hooks/run_hook.py post-compact-restore.py",
             "timeout": 5
           }
         ]
@@ -98,7 +100,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-monitor.py",
+            "command": "python .claude/hooks/run_hook.py context-monitor.py",
             "timeout": 5
           }
         ]
@@ -108,7 +110,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify-reminder.py",
+            "command": "python .claude/hooks/run_hook.py verify-reminder.py",
             "timeout": 5
           }
         ]
@@ -119,7 +121,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-reminder.py",
+            "command": "python .claude/hooks/run_hook.py log-reminder.py",
             "timeout": 10
           }
         ]

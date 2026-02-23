@@ -45,6 +45,7 @@ When you modify a Beamer `.tex` file, you MUST also apply the equivalent change 
 ## When NOT to Sync
 
 - Quarto file doesn't exist yet
+- Module exists only as a Quarto report (no Beamer equivalent)
 - Change is LaTeX-only infrastructure (preamble, theme files)
 - Explicitly told to skip Quarto sync
 

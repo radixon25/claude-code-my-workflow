@@ -27,35 +27,47 @@ paths:
 
 ## 3. Domain Correctness
 
-<!-- Customize for your field's known pitfalls -->
-- Verify estimator implementations match slide formulas
-- Check known package bugs (document below in Common Pitfalls)
+- Salesforce date fields: `Created_Date` lacks timestamps; only `End_Date` has time
+- Compliance tiers are ordinal: STAR (<3h) > City (<20h) > Non-Compliant (20h+)
+- Staffing = scheduled minus call-offs, NOT actual hours worked
+- Case age is right-skewed with zero-inflated floor (same-hour closures)
+- Shift schedule: AM=7am-3pm, PM=3pm-11pm, OVN=11pm-7am
+- Supervisor count is constant (1/shift) — exclude from regression models
+- Intake Drivers operate in pairs; model pair count, not individual count
+- TBG (Crisis Referral) has very few non-compliant cases (~8) — ordinal models may be unstable
 
 ## 4. Visual Identity
 
 ```r
-# --- Your institutional palette ---
-primary_blue  <- "#012169"
-primary_gold  <- "#f2a900"
-accent_gray   <- "#525252"
-positive_green <- "#15803d"
-negative_red  <- "#b91c1c"
+# --- ASH Institutional Palette ---
+# TODO: User to provide official ASH brand colors
+# Placeholder values below — update when brand guide is available
+ash_navy       <- "#1B365D"   # Primary (headings, key elements)
+ash_accent     <- "#4A90D9"   # Secondary (accents, links)
+accent_gray    <- "#525252"   # Neutral (de-emphasized text)
+positive_green <- "#15803d"   # Good/compliant
+negative_red   <- "#b91c1c"   # Bad/non-compliant
+warning_amber  <- "#D97706"   # Warning/approaching threshold
 ```
 
 ### Custom Theme
 ```r
-theme_custom <- function(base_size = 14) {
+theme_ash <- function(base_size = 14) {
   theme_minimal(base_size = base_size) +
     theme(
-      plot.title = element_text(face = "bold", color = primary_blue),
+      plot.title = element_text(face = "bold", color = ash_navy),
+      plot.subtitle = element_text(color = accent_gray),
       legend.position = "bottom"
     )
 }
 ```
 
-### Figure Dimensions for Beamer
+### Figure Dimensions
 ```r
+# For Beamer slides (4:3 aspect ratio)
 ggsave(filepath, width = 12, height = 5, bg = "transparent")
+# For Quarto HTML reports (wider layout)
+ggsave(filepath, width = 14, height = 6, bg = "white")
 ```
 
 ## 5. RDS Data Pattern
@@ -68,11 +80,15 @@ saveRDS(result, file.path(out_dir, "descriptive_name.rds"))
 
 ## 6. Common Pitfalls
 
-<!-- Add your field-specific pitfalls here -->
 | Pitfall | Impact | Prevention |
 |---------|--------|------------|
-| Missing `bg = "transparent"` | White boxes on slides | Always include in ggsave() |
-| Hardcoded paths | Breaks on other machines | Use relative paths |
+| Missing `bg = "transparent"` | White boxes on Beamer slides | Always include in ggsave() for slides |
+| Hardcoded paths | Breaks on other machines | Use here() + config.R |
+| Using Created_Date for shift assignment | Wrong shift linkage | Use End_Date timestamps |
+| Including Supervisors in regression | Constant predictor, singular matrix | Filter to Intake + Dispatch only |
+| Not accounting for call-offs | Overstates available staffing | Subtract Attendance Tracker call-offs |
+| Small sample ordinal model for TBG | Unstable coefficients | Flag n < 20 per category, use binary instead |
+| Treating compliance tiers as nominal | Loses ordering information | Use ordinal logistic or binary for STAR target |
 
 ## 7. Line Length & Mathematical Exceptions
 
