@@ -57,7 +57,7 @@
 <body>
 <h1>Shelter Placement Efficiency Dashboard</h1>
 <p class="subtitle">All 34 shelters grouped by demographic served &mdash; sorted by conversion coefficient within group</p>
-<p class="timestamp">Generated: 2026-02-25 15:16 | Run: 2026-02-25_151635 | Period: 2026-01-10 to 2026-02-23</p>
+<p class="timestamp">Generated: 2026-02-25 15:22 | Run: 2026-02-25_152228 | Period: 2026-01-10 to 2026-02-23</p>
 
 <!-- ========== SUMMARY PANEL ========== -->
 <div class="summary-panel">
@@ -117,13 +117,20 @@
 
   <div class="summary-box">
     <h3>How Demographic is Determined</h3>
-    <p>Each shelter is assigned to the <strong>population it most frequently serves</strong> based on the
-    city&rsquo;s bed tracker data. For each shelter group, we count how many bed-site-day records fall
-    under each population label (Men, Women, Youth, Families) and assign the <strong>most common</strong>
-    one. For example, if a shelter&rsquo;s bed records show 40 &ldquo;Men&rdquo; days and 4 &ldquo;Women&rdquo;
-    days, it is classified as a Men&rsquo;s shelter.</p>
-    <p><em>Note: Some shelters serve multiple populations (e.g., YWLA has both Men and Women beds).
-    These are classified by their majority population, which may not capture the full picture.</em></p>
+    <p>Each shelter is categorized by <strong>all populations it serves</strong> based on the
+    city&rsquo;s bed tracker data. We identify every distinct population label (Men, Women,
+    Youth, Families) across all bed sub-sites for each shelter group.</p>
+    <ul>
+      <li><strong>Men &amp; Women:</strong> Shelter operates beds for both men and women
+          (e.g., YWLA has YWLA-Men + YWLA-Women sub-sites)</li>
+      <li><strong>Men:</strong> Shelter operates beds exclusively for men</li>
+      <li><strong>Women:</strong> Shelter operates beds exclusively for women</li>
+      <li><strong>Women &amp; Families:</strong> Shelter operates beds for women and families</li>
+      <li><strong>Youth:</strong> Shelter operates beds for youth</li>
+      <li><strong>Families:</strong> Shelter operates beds exclusively for families</li>
+    </ul>
+    <p><em>This approach captures multi-population shelters accurately rather than
+    assigning a single majority label.</em></p>
   </div>
 
   <div class="summary-box">
@@ -165,7 +172,27 @@
 
 <h2>Shelter Data by Demographic</h2>
 <div class="demo-section">
-    <div class="demo-header">Men (8 shelters)</div>
+    <div class="demo-header">Men & Women (3 shelters)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Conv. Coeff.<span class="th-sub">log-rate</span></th>
+      <th>SE</th>
+      <th>p-value</th>
+      <th>Mean Beds<span class="th-sub">(lag-1)</span></th>
+      <th>Total Placed</th>
+      <th>Mean Daily<span class="th-sub">Placements</span></th>
+      <th>% Days w/<span class="th-sub">Placement</span></th>
+      <th>Days</th>
+      <th>Status</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Lincoln Park Community Shelter - Fullerton</strong></td><td class="coef-pos">0.2635</td><td>0.1654</td><td>0.1110</td><td>1.5</td><td class="metric-mid">15</td><td class="metric-mid">0.341</td><td>23%</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>YWLA</strong></td><td class="coef-pos">0.0953</td><td>0.0669</td><td>0.1545</td><td>2.2</td><td class="metric-high">40</td><td class="metric-high">0.909</td><td>55%</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>North Side Housing & Supportive Services - Michael Segoviano Shelter</strong></td><td class="coef-neg">-0.2386</td><td>0.4165</td><td>0.5666</td><td>0.9</td><td class="metric-low">9</td><td class="metric-low">0.205</td><td>18%</td><td></td><td class="reliable">✓ Reliable</td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-header">Men (5 shelters)</div>
     <table>
     <thead><tr>
       <th>Shelter</th>
@@ -181,13 +208,10 @@
     </tr></thead>
     <tbody>
 <tr><td><strong>Cornerstone - Naomi Men</strong></td><td class="coef-pos">2.0040</td><td>2.0177</td><td>0.3206</td><td>0.2</td><td class="metric-low">3</td><td class="metric-low">0.068</td><td>7%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
-<tr><td><strong>Inner Voice - Pioneer House</strong></td><td class="coef-pos">1.0586</td><td>0.6087</td><td>0.0820</td><td>0.2</td><td class="metric-low">5</td><td class="metric-low">0.114</td><td>9%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
-<tr><td><strong>Lincoln Park Community Shelter - Fullerton</strong></td><td class="coef-pos">0.2635</td><td>0.1654</td><td>0.1110</td><td>1.5</td><td class="metric-high">15</td><td class="metric-high">0.341</td><td>23%</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Inner Voice - Pioneer House</strong></td><td class="coef-pos">1.0586</td><td>0.6087</td><td>0.0820</td><td>0.2</td><td class="metric-mid">5</td><td class="metric-mid">0.114</td><td>9%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
 <tr><td><strong>Franciscan Outreach - House of Mary and Joseph</strong></td><td class="coef-pos">0.2004</td><td>0.0714</td><td>0.0050</td><td>1.5</td><td class="metric-high">55</td><td class="metric-high">1.250</td><td>50%</td><td></td><td class="reliable">✓ Reliable</td></tr>
-<tr><td><strong>YWLA</strong></td><td class="coef-pos">0.0953</td><td>0.0669</td><td>0.1545</td><td>2.2</td><td class="metric-high">40</td><td class="metric-high">0.909</td><td>55%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Olive Branch Mission - Lamplight Single Men</strong></td><td class="coef-neg">-0.0750</td><td>0.5390</td><td>0.8894</td><td>0.8</td><td class="metric-low">4</td><td class="metric-low">0.091</td><td>7%</td><td></td><td class="reliable">✓ Reliable</td></tr>
-<tr><td><strong>North Side Housing & Supportive Services - Michael Segoviano Shelter</strong></td><td class="coef-neg">-0.2386</td><td>0.4165</td><td>0.5666</td><td>0.9</td><td class="metric-mid">9</td><td class="metric-mid">0.205</td><td>18%</td><td></td><td class="reliable">✓ Reliable</td></tr>
-<tr><td><strong>Roosevelt</strong></td><td class="coef-neg">-17.6879</td><td>2918.4993</td><td>0.9952</td><td>0.3</td><td class="metric-mid">7</td><td class="metric-mid">0.159</td><td>16%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+<tr><td><strong>Roosevelt</strong></td><td class="coef-neg">-17.6879</td><td>2918.4993</td><td>0.9952</td><td>0.3</td><td class="metric-high">7</td><td class="metric-high">0.159</td><td>16%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
 </tbody></table></div>
 <div class="demo-section">
     <div class="demo-header">Women (3 shelters)</div>
@@ -208,6 +232,26 @@
 <tr><td><strong>Deborah's Place - Teresa</strong></td><td class="coef-pos">0.8506</td><td>0.8688</td><td>0.3275</td><td>0.2</td><td class="metric-mid">6</td><td class="metric-mid">0.136</td><td>14%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
 <tr><td><strong>Olive Branch Mission - Lamplight Single Women</strong></td><td class="coef-pos">0.3061</td><td>0.1095</td><td>0.0052</td><td>1.9</td><td class="metric-high">27</td><td class="metric-high">0.614</td><td>39%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Cornerstone - Naomi Women</strong></td><td class="coef-neg">-15.9450</td><td>4975.6968</td><td>0.9974</td><td>0.1</td><td class="metric-low">2</td><td class="metric-low">0.045</td><td>5%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-header">Women & Families (3 shelters)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Conv. Coeff.<span class="th-sub">log-rate</span></th>
+      <th>SE</th>
+      <th>p-value</th>
+      <th>Mean Beds<span class="th-sub">(lag-1)</span></th>
+      <th>Total Placed</th>
+      <th>Mean Daily<span class="th-sub">Placements</span></th>
+      <th>% Days w/<span class="th-sub">Placement</span></th>
+      <th>Days</th>
+      <th>Status</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Christian Community Health Center - Amani House</strong></td><td class="coef-pos">0.6715</td><td>0.7312</td><td>0.3585</td><td>0.6</td><td class="metric-low">2</td><td class="metric-low">0.045</td><td>5%</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Good News Partners - New Life</strong></td><td class="coef-pos">0.3678</td><td>0.2677</td><td>0.1694</td><td>0.2</td><td class="metric-mid">6</td><td class="metric-mid">0.136</td><td>11%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+<tr><td><strong>Margaret's Village - Maria Shelter</strong></td><td class="coef-pos">0.0968</td><td>0.2119</td><td>0.6478</td><td>1.2</td><td class="metric-high">11</td><td class="metric-high">0.250</td><td>23%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 </tbody></table></div>
 <div class="demo-section">
     <div class="demo-header">Youth (5 shelters)</div>
@@ -232,7 +276,7 @@
 <tr><td><strong>The Night Ministry - Open Door Youth Shelter</strong></td><td class="coef-na">N/A</td><td>N/A</td><td>N/A</td><td>2.3</td><td class="metric-low">1</td><td class="metric-low">0.023</td><td>2%</td><td></td><td class="no-data">Insufficient data</td></tr>
 </tbody></table></div>
 <div class="demo-section">
-    <div class="demo-header">Families (18 shelters)</div>
+    <div class="demo-header">Families (15 shelters)</div>
     <table>
     <thead><tr>
       <th>Shelter</th>
@@ -247,20 +291,17 @@
       <th>Status</th>
     </tr></thead>
     <tbody>
-<tr><td><strong>Christian Community Health Center - Amani House</strong></td><td class="coef-pos">0.6715</td><td>0.7312</td><td>0.3585</td><td>0.6</td><td class="metric-low">2</td><td class="metric-low">0.045</td><td>5%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Casa Central La Posada - 1322 N Kedzie</strong></td><td class="coef-pos">0.4801</td><td>0.2047</td><td>0.0190</td><td>1.1</td><td class="metric-mid">4</td><td class="metric-mid">0.091</td><td>9%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>The Salvation Army - Evangeline Booth Lodge</strong></td><td class="coef-pos">0.4644</td><td>0.3694</td><td>0.2087</td><td>0.3</td><td class="metric-mid">3</td><td class="metric-mid">0.068</td><td>7%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
-<tr><td><strong>Good News Partners - New Life</strong></td><td class="coef-pos">0.3678</td><td>0.2677</td><td>0.1694</td><td>0.2</td><td class="metric-high">6</td><td class="metric-high">0.136</td><td>11%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
 <tr><td><strong>Primo - Madison</strong></td><td class="coef-pos">0.3456</td><td>0.1697</td><td>0.0417</td><td>0.8</td><td class="metric-mid">4</td><td class="metric-mid">0.091</td><td>9%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Cornerstone - Sylvia</strong></td><td class="coef-pos">0.3277</td><td>0.1045</td><td>0.0017</td><td>1.8</td><td class="metric-high">11</td><td class="metric-high">0.250</td><td>16%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Primo - Sangamon</strong></td><td class="coef-pos">0.2351</td><td>0.1973</td><td>0.2336</td><td>0.6</td><td class="metric-high">11</td><td class="metric-high">0.250</td><td>20%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Margaret's Village - Believe Shelter</strong></td><td class="coef-pos">0.1708</td><td>0.2405</td><td>0.4777</td><td>0.9</td><td class="metric-mid">3</td><td class="metric-mid">0.068</td><td>7%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Olive Branch Mission - Lamplight III</strong></td><td class="coef-pos">0.1255</td><td>0.1521</td><td>0.4093</td><td>8.6</td><td class="metric-low">2</td><td class="metric-low">0.045</td><td>5%</td><td></td><td class="reliable">✓ Reliable</td></tr>
-<tr><td><strong>Margaret's Village - Maria Shelter</strong></td><td class="coef-pos">0.0968</td><td>0.2119</td><td>0.6478</td><td>1.2</td><td class="metric-high">11</td><td class="metric-high">0.250</td><td>23%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Olive Branch Mission - Lamplight I</strong></td><td class="coef-pos">0.0340</td><td>0.0390</td><td>0.3827</td><td>2.6</td><td class="metric-high">24</td><td class="metric-high">0.545</td><td>43%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>MWRD</strong></td><td class="coef-neg">-0.0001</td><td>0.0022</td><td>0.9617</td><td>299.4</td><td class="metric-high">68</td><td class="metric-high">1.545</td><td>68%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>AIC</strong></td><td class="coef-neg">-0.0220</td><td>5.7992</td><td>0.9970</td><td>312.6</td><td class="metric-mid">3</td><td class="metric-mid">0.068</td><td>5%</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
-<tr><td><strong>The Salvation Army - EHARC</strong></td><td class="coef-neg">-0.0786</td><td>0.1522</td><td>0.6054</td><td>68.7</td><td class="metric-mid">5</td><td class="metric-mid">0.114</td><td>7%</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>The Salvation Army - EHARC</strong></td><td class="coef-neg">-0.0786</td><td>0.1522</td><td>0.6054</td><td>68.7</td><td class="metric-high">5</td><td class="metric-high">0.114</td><td>7%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Olive Branch Mission - Lamplight II</strong></td><td class="coef-neg">-0.1427</td><td>0.1282</td><td>0.2659</td><td>8.3</td><td class="metric-mid">3</td><td class="metric-mid">0.068</td><td>7%</td><td></td><td class="reliable">✓ Reliable</td></tr>
 <tr><td><strong>Cornerstone - Hannah House</strong></td><td class="coef-na">N/A</td><td>N/A</td><td>N/A</td><td>0.0</td><td class="metric-low">0</td><td class="metric-low">0.000</td><td>0%</td><td></td><td class="no-data">Insufficient data</td></tr>
 <tr><td><strong>Featherfist - Hope Village</strong></td><td class="coef-na">N/A</td><td>N/A</td><td>N/A</td><td>0.1</td><td class="metric-low">1</td><td class="metric-low">0.023</td><td>2%</td><td></td><td class="no-data">Insufficient data</td></tr>

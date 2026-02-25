@@ -834,12 +834,29 @@ sensitivity_results[["Sd_date_fe"]] <- extract_bed_coef(sd_model) %>%
 log_msg("  S-e: Population-specific models\n")
 
 # Need to map shelter_group back to population from bed data
+# Collect ALL distinct populations served (not just majority) for proper categorization
 site_pop <- bed_site_day %>%
   inner_join(shelter_groups, by = c("site_name" = "bed_site"),
              relationship = "many-to-many") %>%
   group_by(shelter_group) %>%
-  summarise(pop_primary = names(sort(table(population), decreasing = TRUE))[1],
-            .groups = "drop")
+  summarise(
+    pop_primary = names(sort(table(population), decreasing = TRUE))[1],
+    pops_served = paste(sort(unique(population)), collapse = " & "),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    # Proper demographic category based on ALL populations served
+    demographic = case_when(
+      grepl("Men", pops_served) & grepl("Women", pops_served) & grepl("Families", pops_served) ~ "Men, Women & Families",
+      grepl("Men", pops_served) & grepl("Women", pops_served) ~ "Men & Women",
+      grepl("Women", pops_served) & grepl("Families", pops_served) ~ "Women & Families",
+      grepl("Men", pops_served) & !grepl("Women", pops_served) ~ "Men",
+      grepl("Women", pops_served) & !grepl("Men", pops_served) ~ "Women",
+      grepl("Youth", pops_served) ~ "Youth",
+      grepl("Families", pops_served) ~ "Families",
+      TRUE ~ "Other"
+    )
+  )
 
 site_panel_pop <- site_panel %>%
   left_join(site_pop, by = "shelter_group")
@@ -1210,9 +1227,10 @@ site_heatmap_data <- site_panel %>%
                                     conversion_p, reliable, model_status),
     by = "shelter_group"
   ) %>%
-  left_join(site_pop, by = "shelter_group") %>%
+  left_join(site_pop %>% select(shelter_group, demographic, pops_served),
+            by = "shelter_group") %>%
   mutate(
-    demographic = ifelse(is.na(pop_primary), "Other", pop_primary),
+    demographic = ifelse(is.na(demographic), "Other", demographic),
     shelter_label = gsub("^A Safe Haven - ", "", shelter_group)
   )
 
@@ -1258,7 +1276,8 @@ shelter_order <- site_heatmap_data %>%
 heatmap_long$shelter_label <- factor(heatmap_long$shelter_label, levels = shelter_order)
 
 # Order demographics for facets
-demo_order <- c("Men", "Women", "Youth", "Families", "Other")
+demo_order <- c("Men & Women", "Men", "Women", "Men, Women & Families",
+                "Women & Families", "Youth", "Families", "Other")
 demo_order <- demo_order[demo_order %in% unique(heatmap_long$demographic)]
 heatmap_long$demographic <- factor(heatmap_long$demographic, levels = demo_order)
 
@@ -1464,13 +1483,20 @@ html_content <- paste0('<!DOCTYPE html>
 
   <div class="summary-box">
     <h3>How Demographic is Determined</h3>
-    <p>Each shelter is assigned to the <strong>population it most frequently serves</strong> based on the
-    city&rsquo;s bed tracker data. For each shelter group, we count how many bed-site-day records fall
-    under each population label (Men, Women, Youth, Families) and assign the <strong>most common</strong>
-    one. For example, if a shelter&rsquo;s bed records show 40 &ldquo;Men&rdquo; days and 4 &ldquo;Women&rdquo;
-    days, it is classified as a Men&rsquo;s shelter.</p>
-    <p><em>Note: Some shelters serve multiple populations (e.g., YWLA has both Men and Women beds).
-    These are classified by their majority population, which may not capture the full picture.</em></p>
+    <p>Each shelter is categorized by <strong>all populations it serves</strong> based on the
+    city&rsquo;s bed tracker data. We identify every distinct population label (Men, Women,
+    Youth, Families) across all bed sub-sites for each shelter group.</p>
+    <ul>
+      <li><strong>Men &amp; Women:</strong> Shelter operates beds for both men and women
+          (e.g., YWLA has YWLA-Men + YWLA-Women sub-sites)</li>
+      <li><strong>Men:</strong> Shelter operates beds exclusively for men</li>
+      <li><strong>Women:</strong> Shelter operates beds exclusively for women</li>
+      <li><strong>Women &amp; Families:</strong> Shelter operates beds for women and families</li>
+      <li><strong>Youth:</strong> Shelter operates beds for youth</li>
+      <li><strong>Families:</strong> Shelter operates beds exclusively for families</li>
+    </ul>
+    <p><em>This approach captures multi-population shelters accurately rather than
+    assigning a single majority label.</em></p>
   </div>
 
   <div class="summary-box">
