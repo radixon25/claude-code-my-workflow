@@ -43,3 +43,10 @@ SLA_MAP_PATH <- here("data", "mapping", "SLA_Compliance_Map.xlsx")
 
 # Output path for the pre-computed report object
 OUTPUT_RDS   <- here("data", "processed", "reports.rds")
+
+# --- Additional data paths (analysis scripts) ---------------------------------
+# Pre-pivoted parquet (one row per WO, all case types, includes shelter_placed)
+PARQUET_PATH     <- "C:/Users/sagea/Desktop/A Safe Haven/monthlyreport/data/processed/wide.parquet"
+
+# Weather data (fetched from Open-Meteo, cached locally)
+WEATHER_CSV_PATH <- "C:/Users/sagea/Desktop/A Safe Haven/monthlyreport/data/inputs/weather_daily.csv"

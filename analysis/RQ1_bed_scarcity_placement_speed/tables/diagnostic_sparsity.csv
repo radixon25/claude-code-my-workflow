@@ -1,0 +1,13 @@
+population,age_bin,CANCELLED,NON_CONTACT,OTHER,PLACED,REFUSED
+Men,bin1_0_20h,20,31,21,93,10
+Men,bin2_20h_7d,50,33,33,81,6
+Men,bin3_7_30d,269,13,1045,20,10
+Men,bin4_30d_plus,5,0,660,0,0
+Women,bin1_0_20h,25,20,17,50,6
+Women,bin2_20h_7d,29,18,18,55,8
+Women,bin3_7_30d,190,14,736,9,9
+Women,bin4_30d_plus,6,0,467,0,0
+Youth,bin1_0_20h,8,3,6,14,2
+Youth,bin2_20h_7d,6,4,6,13,2
+Youth,bin3_7_30d,29,0,176,3,3
+Youth,bin4_30d_plus,2,0,110,0,1

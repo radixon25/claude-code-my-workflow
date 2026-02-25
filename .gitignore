@@ -53,3 +53,18 @@ Thumbs.db
 # Output artifacts — uncomment lines below based on your preference
 # *.rds
 # output/**/*.rds
+
+# Analysis run archives and intermediate data (large, reproducible from scripts)
+analysis/*/runs/
+analysis/*/data/
+
+# Local data files (not shared — paths configured in scripts/R/config.R)
+data/
+scripts/R/Data/
+
+# Claude Code worktrees
+.claude/worktrees/
+
+# R artifacts
+Rplots.pdf
+nul

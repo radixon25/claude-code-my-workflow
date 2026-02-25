@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shelter Placement Efficiency Dashboard</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         margin: 20px; background: #fafafa; color: #333; }
+  h1 { font-size: 1.5em; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 0.9em; margin-bottom: 20px; }
+  .timestamp { color: #999; font-size: 0.8em; }
+  .demo-section { margin-bottom: 30px; }
+  .demo-header { background: #2c3e50; color: white; padding: 8px 16px;
+                 border-radius: 6px 6px 0 0; font-size: 1.1em; font-weight: bold; }
+  table { border-collapse: collapse; width: 100%; background: white;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  th { background: #34495e; color: white; padding: 10px 12px; text-align: left;
+       font-size: 0.85em; position: sticky; top: 0; z-index: 1; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 0.85em; }
+  tr:hover { background: #f0f7ff; }
+  .coef-pos { color: #1a9641; font-weight: bold; }
+  .coef-neg { color: #d7191c; font-weight: bold; }
+  .coef-na  { color: #999; font-style: italic; }
+  .reliable { color: #1a9641; }
+  .unreliable { color: #e67e22; }
+  .no-data { color: #999; }
+  .metric-high { background: #d4edda; }
+  .metric-mid  { background: #fff3cd; }
+  .metric-low  { background: #f8d7da; }
+  .legend { display: flex; gap: 20px; margin: 10px 0 20px; font-size: 0.85em; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-box { width: 14px; height: 14px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<h1>Shelter Placement Efficiency Dashboard</h1>
+<p class="subtitle">All 34 shelters grouped by demographic served &mdash; sorted by conversion coefficient within group</p>
+<p class="timestamp">Generated: 2026-02-25 14:54 | Run: 2026-02-25_145357</p>
+<div class="legend">
+  <div class="legend-item"><div class="legend-box" style="background:#d4edda"></div> Top tercile</div>
+  <div class="legend-item"><div class="legend-box" style="background:#fff3cd"></div> Middle tercile</div>
+  <div class="legend-item"><div class="legend-box" style="background:#f8d7da"></div> Bottom tercile</div>
+  <div class="legend-item"><span class="coef-pos">Green</span> = positive coefficient</div>
+  <div class="legend-item"><span class="coef-neg">Red</span> = negative coefficient</div>
+</div>
+<div class="demo-section">
+    <div class="demo-header">Men (8 shelters)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th><th>Conv. Coeff.</th><th>SE</th><th>p-value</th>
+      <th>Mean Beds</th><th>Total Placed</th><th>% Days w/ Placement</th>
+      <th>Daily Rate</th><th>Days</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Cornerstone - Naomi Men</strong></td><td class="coef-pos">2.0040</td><td>2.0177</td><td>0.3206</td><td>0.2</td><td class="metric-low">3</td><td>7%</td><td class="metric-low">0.068</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+<tr><td><strong>Inner Voice - Pioneer House</strong></td><td class="coef-pos">1.0586</td><td>0.6087</td><td>0.0820</td><td>0.2</td><td class="metric-low">5</td><td>9%</td><td class="metric-low">0.114</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+<tr><td><strong>Lincoln Park Community Shelter - Fullerton</strong></td><td class="coef-pos">0.2635</td><td>0.1654</td><td>0.1110</td><td>1.5</td><td class="metric-high">15</td><td>23%</td><td class="metric-high">0.341</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Franciscan Outreach - House of Mary and Joseph</strong></td><td class="coef-pos">0.2004</td><td>0.0714</td><td>0.0050</td><td>1.5</td><td class="metric-high">55</td><td>50%</td><td class="metric-high">1.250</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>YWLA</strong></td><td class="coef-pos">0.0953</td><td>0.0669</td><td>0.1545</td><td>2.2</td><td class="metric-high">40</td><td>55%</td><td class="metric-high">0.909</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight Single Men</strong></td><td class="coef-neg">-0.0750</td><td>0.5390</td><td>0.8894</td><td>0.8</td><td class="metric-low">4</td><td>7%</td><td class="metric-low">0.091</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>North Side Housing & Supportive Services - Michael Segoviano Shelter</strong></td><td class="coef-neg">-0.2386</td><td>0.4165</td><td>0.5666</td><td>0.9</td><td class="metric-mid">9</td><td>18%</td><td class="metric-mid">0.205</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Roosevelt</strong></td><td class="coef-neg">-17.6879</td><td>2918.4993</td><td>0.9952</td><td>0.3</td><td class="metric-mid">7</td><td>16%</td><td class="metric-mid">0.159</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-header">Women (3 shelters)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th><th>Conv. Coeff.</th><th>SE</th><th>p-value</th>
+      <th>Mean Beds</th><th>Total Placed</th><th>% Days w/ Placement</th>
+      <th>Daily Rate</th><th>Days</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Deborah's Place - Teresa</strong></td><td class="coef-pos">0.8506</td><td>0.8688</td><td>0.3275</td><td>0.2</td><td class="metric-mid">6</td><td>14%</td><td class="metric-mid">0.136</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight Single Women</strong></td><td class="coef-pos">0.3061</td><td>0.1095</td><td>0.0052</td><td>1.9</td><td class="metric-high">27</td><td>39%</td><td class="metric-high">0.614</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Cornerstone - Naomi Women</strong></td><td class="coef-neg">-15.9450</td><td>4975.6968</td><td>0.9974</td><td>0.1</td><td class="metric-low">2</td><td>5%</td><td class="metric-low">0.045</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-header">Youth (5 shelters)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th><th>Conv. Coeff.</th><th>SE</th><th>p-value</th>
+      <th>Mean Beds</th><th>Total Placed</th><th>% Days w/ Placement</th>
+      <th>Daily Rate</th><th>Days</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>West</strong></td><td class="coef-pos">0.4157</td><td>0.1516</td><td>0.0061</td><td>0.7</td><td class="metric-high">4</td><td>9%</td><td class="metric-high">0.091</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>La Casa Norte - 47th Street</strong></td><td class="coef-pos">0.0422</td><td>0.3846</td><td>0.9125</td><td>0.6</td><td class="metric-mid">2</td><td>5%</td><td class="metric-mid">0.048</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Unity - Ujima Village</strong></td><td class="coef-neg">-0.0588</td><td>0.1726</td><td>0.7334</td><td>3.7</td><td class="metric-high">4</td><td>5%</td><td class="metric-high">0.091</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Youth</strong></td><td class="coef-na">N/A</td><td>N/A</td><td>N/A</td><td>0.7</td><td class="metric-low">1</td><td>2%</td><td class="metric-low">0.023</td><td></td><td class="no-data">Insufficient data</td></tr>
+<tr><td><strong>The Night Ministry - Open Door Youth Shelter</strong></td><td class="coef-na">N/A</td><td>N/A</td><td>N/A</td><td>2.3</td><td class="metric-low">1</td><td>2%</td><td class="metric-low">0.023</td><td></td><td class="no-data">Insufficient data</td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-header">Families (18 shelters)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th><th>Conv. Coeff.</th><th>SE</th><th>p-value</th>
+      <th>Mean Beds</th><th>Total Placed</th><th>% Days w/ Placement</th>
+      <th>Daily Rate</th><th>Days</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Christian Community Health Center - Amani House</strong></td><td class="coef-pos">0.6715</td><td>0.7312</td><td>0.3585</td><td>0.6</td><td class="metric-low">2</td><td>5%</td><td class="metric-low">0.045</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Casa Central La Posada - 1322 N Kedzie</strong></td><td class="coef-pos">0.4801</td><td>0.2047</td><td>0.0190</td><td>1.1</td><td class="metric-mid">4</td><td>9%</td><td class="metric-mid">0.091</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>The Salvation Army - Evangeline Booth Lodge</strong></td><td class="coef-pos">0.4644</td><td>0.3694</td><td>0.2087</td><td>0.3</td><td class="metric-mid">3</td><td>7%</td><td class="metric-mid">0.068</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+<tr><td><strong>Good News Partners - New Life</strong></td><td class="coef-pos">0.3678</td><td>0.2677</td><td>0.1694</td><td>0.2</td><td class="metric-high">6</td><td>11%</td><td class="metric-high">0.136</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+<tr><td><strong>Primo - Madison</strong></td><td class="coef-pos">0.3456</td><td>0.1697</td><td>0.0417</td><td>0.8</td><td class="metric-mid">4</td><td>9%</td><td class="metric-mid">0.091</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Cornerstone - Sylvia</strong></td><td class="coef-pos">0.3277</td><td>0.1045</td><td>0.0017</td><td>1.8</td><td class="metric-high">11</td><td>16%</td><td class="metric-high">0.250</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Primo - Sangamon</strong></td><td class="coef-pos">0.2351</td><td>0.1973</td><td>0.2336</td><td>0.6</td><td class="metric-high">11</td><td>20%</td><td class="metric-high">0.250</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Margaret's Village - Believe Shelter</strong></td><td class="coef-pos">0.1708</td><td>0.2405</td><td>0.4777</td><td>0.9</td><td class="metric-mid">3</td><td>7%</td><td class="metric-mid">0.068</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight III</strong></td><td class="coef-pos">0.1255</td><td>0.1521</td><td>0.4093</td><td>8.6</td><td class="metric-low">2</td><td>5%</td><td class="metric-low">0.045</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Margaret's Village - Maria Shelter</strong></td><td class="coef-pos">0.0968</td><td>0.2119</td><td>0.6478</td><td>1.2</td><td class="metric-high">11</td><td>23%</td><td class="metric-high">0.250</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight I</strong></td><td class="coef-pos">0.0340</td><td>0.0390</td><td>0.3827</td><td>2.6</td><td class="metric-high">24</td><td>43%</td><td class="metric-high">0.545</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>MWRD</strong></td><td class="coef-neg">-0.0001</td><td>0.0022</td><td>0.9617</td><td>299.4</td><td class="metric-high">68</td><td>68%</td><td class="metric-high">1.545</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>AIC</strong></td><td class="coef-neg">-0.0220</td><td>5.7992</td><td>0.9970</td><td>312.6</td><td class="metric-mid">3</td><td>5%</td><td class="metric-mid">0.068</td><td></td><td class="unreliable">Unreliable estimate</td></tr>
+<tr><td><strong>The Salvation Army - EHARC</strong></td><td class="coef-neg">-0.0786</td><td>0.1522</td><td>0.6054</td><td>68.7</td><td class="metric-mid">5</td><td>7%</td><td class="metric-mid">0.114</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight II</strong></td><td class="coef-neg">-0.1427</td><td>0.1282</td><td>0.2659</td><td>8.3</td><td class="metric-mid">3</td><td>7%</td><td class="metric-mid">0.068</td><td></td><td class="reliable">✓ Reliable</td></tr>
+<tr><td><strong>Cornerstone - Hannah House</strong></td><td class="coef-na">N/A</td><td>N/A</td><td>N/A</td><td>0.0</td><td class="metric-low">0</td><td>0%</td><td class="metric-low">0.000</td><td></td><td class="no-data">Insufficient data</td></tr>
+<tr><td><strong>Featherfist - Hope Village</strong></td><td class="coef-na">N/A</td><td>N/A</td><td>N/A</td><td>0.1</td><td class="metric-low">1</td><td>2%</td><td class="metric-low">0.023</td><td></td><td class="no-data">Insufficient data</td></tr>
+<tr><td><strong>New Life CC</strong></td><td class="coef-na">N/A</td><td>N/A</td><td>N/A</td><td>0.2</td><td class="metric-low">0</td><td>0%</td><td class="metric-low">0.000</td><td></td><td class="no-data">Insufficient data</td></tr>
+</tbody></table></div>
+
+<hr style="margin-top:30px">
+<p style="font-size:0.8em;color:#999">
+  <strong>Conversion Coefficient:</strong> Poisson regression estimate of beds_lag1
+  (yesterday&rsquo;s available beds &rarr; today&rsquo;s placements). Positive = more beds lead to more placements.<br>
+  <strong>Reliable:</strong> Model converged, |coef| &lt; 5, SE &lt; 5, mean beds &ge; 0.5.<br>
+  <strong>Insufficient data:</strong> &lt; 2 placements or &lt; 10 site-days &mdash; no regression attempted.<br>
+  Analysis: Poisson FE regression with 36h operational lag. Controls: weather, TBH/TBG demand.
+</p>
+</body></html>

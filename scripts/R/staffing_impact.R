@@ -588,7 +588,7 @@ cat("  Saved: 02_shift_heatmap_tbh_tbg.png\n")
 cor_all <- bind_rows(
   cor_daily %>% mutate(level = "Daily"),
   cor_shift %>% mutate(level = "24h Window")
-)
+)  
 
 cor_all <- cor_all %>%
   mutate(
