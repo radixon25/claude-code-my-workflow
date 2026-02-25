@@ -91,9 +91,12 @@ project_root <- find_project_root()
 here <- function(...) file.path(project_root, ...)
 
 # --- Worktree fallback root (for finding shared data across worktrees) -------
-# If running from a git worktree (.claude/worktrees/X), the main project root
-# is 3 levels up. Try multiple levels to find data/processed/.
+# First checks the project root itself, then walks up parent directories.
+# This ensures running from main repo finds data/ locally before looking higher.
 find_main_root <- function(start) {
+  # Check the project root itself first
+  if (file.exists(file.path(start, "data", "processed"))) return(start)
+  # Then walk up parent directories (for worktree scenarios)
   d <- start
   for (i in 1:5) {
     d <- normalizePath(file.path(d, ".."), winslash = "/")

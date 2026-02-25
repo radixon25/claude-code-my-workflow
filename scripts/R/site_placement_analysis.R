@@ -86,7 +86,12 @@ project_root <- find_project_root()
 here <- function(...) file.path(project_root, ...)
 
 # --- Worktree fallback root (for finding shared data across worktrees) -------
+# First checks the project root itself, then walks up parent directories.
+# This ensures running from main repo finds data/ locally before looking higher.
 find_main_root <- function(start) {
+  # Check the project root itself first
+  if (file.exists(file.path(start, "data", "processed"))) return(start)
+  # Then walk up parent directories (for worktree scenarios)
   d <- start
   for (i in 1:5) {
     d <- normalizePath(file.path(d, ".."), winslash = "/")
@@ -1329,6 +1334,15 @@ html_table <- site_heatmap_data %>%
                                           model_status)))
   )
 
+# Summary stats for the header
+n_reliable_html   <- sum(html_table$reliable, na.rm = TRUE)
+n_unreliable_html <- sum(!html_table$reliable & html_table$model_status == "converged", na.rm = TRUE)
+n_insuff_html     <- sum(html_table$model_status == "insufficient_data", na.rm = TRUE)
+top_site <- html_table %>% filter(reliable) %>% slice_max(conversion_coef, n = 1)
+bot_site <- html_table %>% filter(reliable) %>% slice_min(conversion_coef, n = 1)
+analysis_start_str <- as.character(ANALYSIS_START)
+analysis_end_str   <- as.character(max(site_panel$date, na.rm = TRUE))
+
 # Generate self-contained HTML
 html_content <- paste0('<!DOCTYPE html>
 <html lang="en">
@@ -1338,44 +1352,174 @@ html_content <- paste0('<!DOCTYPE html>
 <title>Shelter Placement Efficiency Dashboard</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-         margin: 20px; background: #fafafa; color: #333; }
-  h1 { font-size: 1.5em; margin-bottom: 4px; }
-  .subtitle { color: #666; font-size: 0.9em; margin-bottom: 20px; }
-  .timestamp { color: #999; font-size: 0.8em; }
+         margin: 20px; background: #fafafa; color: #333; max-width: 1400px; }
+  h1 { font-size: 1.6em; margin-bottom: 4px; color: #2c3e50; }
+  h2 { font-size: 1.2em; color: #2c3e50; margin-top: 30px; margin-bottom: 10px; }
+  .subtitle { color: #666; font-size: 0.9em; margin-bottom: 5px; }
+  .timestamp { color: #999; font-size: 0.8em; margin-bottom: 20px; }
+
+  /* Summary panel */
+  .summary-panel { background: white; border: 1px solid #dee2e6; border-radius: 8px;
+                   padding: 20px 24px; margin-bottom: 24px;
+                   box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .summary-panel h2 { margin-top: 0; font-size: 1.15em; border-bottom: 2px solid #2c3e50;
+                       padding-bottom: 6px; }
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+  .summary-box { background: #f8f9fa; border-radius: 6px; padding: 12px 16px; }
+  .summary-box h3 { margin: 0 0 6px 0; font-size: 0.95em; color: #495057; }
+  .summary-box p { margin: 0; font-size: 0.85em; line-height: 1.5; color: #555; }
+  .summary-box ul { margin: 4px 0 0 0; padding-left: 18px; font-size: 0.85em; line-height: 1.6; color: #555; }
+  .summary-box li { margin-bottom: 2px; }
+
+  /* Stat highlights */
+  .stat-row { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
+  .stat-card { background: white; border: 1px solid #dee2e6; border-radius: 6px;
+               padding: 12px 16px; text-align: center; min-width: 120px; flex: 1; }
+  .stat-card .stat-value { font-size: 1.5em; font-weight: bold; color: #2c3e50; }
+  .stat-card .stat-label { font-size: 0.78em; color: #888; margin-top: 2px; }
+
+  /* Data tables */
   .demo-section { margin-bottom: 30px; }
   .demo-header { background: #2c3e50; color: white; padding: 8px 16px;
                  border-radius: 6px 6px 0 0; font-size: 1.1em; font-weight: bold; }
   table { border-collapse: collapse; width: 100%; background: white;
           box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
   th { background: #34495e; color: white; padding: 10px 12px; text-align: left;
-       font-size: 0.85em; position: sticky; top: 0; z-index: 1; }
+       font-size: 0.82em; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+  th .th-sub { font-weight: normal; font-size: 0.85em; color: #adb5bd; display: block; }
   td { padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 0.85em; }
   tr:hover { background: #f0f7ff; }
   .coef-pos { color: #1a9641; font-weight: bold; }
   .coef-neg { color: #d7191c; font-weight: bold; }
   .coef-na  { color: #999; font-style: italic; }
-  .reliable { color: #1a9641; }
+  .reliable { color: #1a9641; font-weight: 600; }
   .unreliable { color: #e67e22; }
-  .no-data { color: #999; }
+  .no-data { color: #999; font-style: italic; }
   .metric-high { background: #d4edda; }
   .metric-mid  { background: #fff3cd; }
   .metric-low  { background: #f8d7da; }
-  .legend { display: flex; gap: 20px; margin: 10px 0 20px; font-size: 0.85em; }
-  .legend-item { display: flex; align-items: center; gap: 6px; }
-  .legend-box { width: 14px; height: 14px; border-radius: 2px; }
 </style>
 </head>
 <body>
 <h1>Shelter Placement Efficiency Dashboard</h1>
 <p class="subtitle">All ', n_shelters_total, ' shelters grouped by demographic served &mdash; sorted by conversion coefficient within group</p>
-<p class="timestamp">Generated: ', format(Sys.time(), "%Y-%m-%d %H:%M"), ' | Run: ', RUN_TIMESTAMP, '</p>
-<div class="legend">
-  <div class="legend-item"><div class="legend-box" style="background:#d4edda"></div> Top tercile</div>
-  <div class="legend-item"><div class="legend-box" style="background:#fff3cd"></div> Middle tercile</div>
-  <div class="legend-item"><div class="legend-box" style="background:#f8d7da"></div> Bottom tercile</div>
-  <div class="legend-item"><span class="coef-pos">Green</span> = positive coefficient</div>
-  <div class="legend-item"><span class="coef-neg">Red</span> = negative coefficient</div>
+<p class="timestamp">Generated: ', format(Sys.time(), "%Y-%m-%d %H:%M"), ' | Run: ', RUN_TIMESTAMP,
+  ' | Period: ', analysis_start_str, ' to ', analysis_end_str, '</p>
+
+<!-- ========== SUMMARY PANEL ========== -->
+<div class="summary-panel">
+<h2>How to Read This Dashboard</h2>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-value">', n_shelters_total, '</div>
+    <div class="stat-label">Total Shelters</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">', n_reliable_html, '</div>
+    <div class="stat-label">Reliable Estimates</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">', n_unreliable_html, '</div>
+    <div class="stat-label">Unreliable Estimates</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">', n_insuff_html, '</div>
+    <div class="stat-label">Insufficient Data</div>
+  </div>
 </div>
+
+<div class="summary-grid">
+  <div class="summary-box">
+    <h3>What is the Conversion Coefficient?</h3>
+    <p>Each shelter gets a <strong>Poisson regression</strong> estimating: <em>&ldquo;When this shelter had
+    one more bed open yesterday, how many additional placements did it make today?&rdquo;</em></p>
+    <ul>
+      <li><strong>Positive coefficient</strong> (green) = more open beds &rarr; more placements. The shelter
+          efficiently converts available capacity into placements.</li>
+      <li><strong>Near-zero coefficient</strong> = bed availability does not predict placements at this site.
+          Other factors (approval speed, client readiness, staffing) may be the bottleneck.</li>
+      <li><strong>Negative coefficient</strong> (red) = more open beds correlate with <em>fewer</em> placements.
+          This is counterintuitive and usually reflects low overall volume or operational issues
+          rather than a causal effect.</li>
+    </ul>
+    <p>The coefficient is in <strong>log-rate units</strong>. A coefficient of 0.30 means each additional
+    bed increases the daily placement rate by about 35% (exp(0.30) &approx; 1.35).</p>
+  </div>
+
+  <div class="summary-box">
+    <h3>Status Definitions</h3>
+    <ul>
+      <li><strong style="color:#1a9641">&check; Reliable:</strong> Regression converged with a numerically
+          stable estimate. Criteria: |coefficient| &lt; 5, standard error &lt; 5, and mean
+          available beds &ge; 0.5. <strong>Use these for operational decision-making.</strong></li>
+      <li><strong style="color:#e67e22">Unreliable estimate:</strong> Regression converged but produced extreme
+          or numerically unstable results&mdash;typically because the shelter has near-zero beds on most days,
+          very few placements, or both. <strong>Do not use for comparisons.</strong></li>
+      <li><strong style="color:#999">Insufficient data:</strong> Fewer than 2 total placements or fewer than 10
+          site-days in the analysis period. No regression was attempted.
+          <strong>Monitor as more data accumulates.</strong></li>
+    </ul>
+  </div>
+
+  <div class="summary-box">
+    <h3>How Demographic is Determined</h3>
+    <p>Each shelter is assigned to the <strong>population it most frequently serves</strong> based on the
+    city&rsquo;s bed tracker data. For each shelter group, we count how many bed-site-day records fall
+    under each population label (Men, Women, Youth, Families) and assign the <strong>most common</strong>
+    one. For example, if a shelter&rsquo;s bed records show 40 &ldquo;Men&rdquo; days and 4 &ldquo;Women&rdquo;
+    days, it is classified as a Men&rsquo;s shelter.</p>
+    <p><em>Note: Some shelters serve multiple populations (e.g., YWLA has both Men and Women beds).
+    These are classified by their majority population, which may not capture the full picture.</em></p>
+  </div>
+
+  <div class="summary-box">
+    <h3>Methodology</h3>
+    <ul>
+      <li><strong>Data:</strong> TBC placements from Salesforce matched to city bed tracker via a curated
+          crosswalk (90% coverage of eligible placed cases).</li>
+      <li><strong>Model:</strong> Site-specific Poisson regression: <code>placements ~ beds_lag1 + temperature
+          + cold_day</code> for each shelter independently.</li>
+      <li><strong>Lag:</strong> Uses <strong>yesterday&rsquo;s 9am bed count</strong> (lag-1) to predict
+          today&rsquo;s placements, reflecting the ~36-hour operational pipeline from bed availability
+          to case closure in Salesforce.</li>
+      <li><strong>Controls:</strong> Average temperature and cold-day indicator (min &lt; 20&deg;F)
+          control for weather-driven demand variation.</li>
+      <li><strong>Period:</strong> ', analysis_start_str, ' through ', analysis_end_str,
+          ' (', length(unique(site_panel$date)), ' days).</li>
+    </ul>
+  </div>
+</div>
+
+',
+  ifelse(nrow(top_site) > 0,
+    paste0('<p style="font-size:0.9em"><strong>Top converter:</strong> ',
+           top_site$shelter_label[1], ' (coef=', sprintf("%.4f", top_site$conversion_coef[1]),
+           ', ', top_site$total_placed[1], ' placements) &mdash; <strong>Lowest converter:</strong> ',
+           bot_site$shelter_label[1], ' (coef=', sprintf("%.4f", bot_site$conversion_coef[1]),
+           ', ', bot_site$total_placed[1], ' placements)</p>'),
+    ''),
+'</div>
+
+<!-- ========== COLUMN LEGEND ========== -->
+<div class="summary-panel" style="padding: 12px 24px; margin-bottom: 20px;">
+<table style="box-shadow:none; font-size:0.82em;">
+<thead><tr style="background:#f8f9fa"><th style="background:#f8f9fa;color:#333">Column</th>
+<th style="background:#f8f9fa;color:#333">Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Conv. Coeff.</strong></td><td>Poisson regression coefficient for beds_lag1. How much one additional open bed (yesterday) changes the log placement rate (today).</td></tr>
+<tr><td><strong>SE</strong></td><td>Standard error of the coefficient. Smaller = more precise estimate.</td></tr>
+<tr><td><strong>p-value</strong></td><td>Statistical significance. Below 0.05 = strong evidence the coefficient is not zero.</td></tr>
+<tr><td><strong>Mean Beds (lag-1)</strong></td><td>Average number of beds open at 9am on the previous day across the analysis period.</td></tr>
+<tr><td><strong>Total Placed</strong></td><td>Total number of TBC placements recorded at this shelter during the analysis period.</td></tr>
+<tr><td><strong>Mean Daily Placements</strong></td><td>Average placements per day (= Total Placed &divide; Days). A shelter with 0.5 places about one person every two days.</td></tr>
+<tr><td><strong>% Days w/ Placement</strong></td><td>Percentage of days this shelter had at least one placement. Indicates how consistently it places.</td></tr>
+<tr><td><strong>Days</strong></td><td>Number of site-days in the analysis panel for this shelter.</td></tr>
+<tr><td><strong>Status</strong></td><td>Reliability of the conversion estimate (see definitions above).</td></tr>
+</tbody></table>
+</div>
+
+<h2>Shelter Data by Demographic</h2>
 ')
 
 for (demo in demo_order) {
@@ -1391,9 +1535,16 @@ for (demo in demo_order) {
     <div class="demo-header">', demo, ' (', nrow(demo_data), ' shelters)</div>
     <table>
     <thead><tr>
-      <th>Shelter</th><th>Conv. Coeff.</th><th>SE</th><th>p-value</th>
-      <th>Mean Beds</th><th>Total Placed</th><th>% Days w/ Placement</th>
-      <th>Daily Rate</th><th>Days</th><th>Status</th>
+      <th>Shelter</th>
+      <th>Conv. Coeff.<span class="th-sub">log-rate</span></th>
+      <th>SE</th>
+      <th>p-value</th>
+      <th>Mean Beds<span class="th-sub">(lag-1)</span></th>
+      <th>Total Placed</th>
+      <th>Mean Daily<span class="th-sub">Placements</span></th>
+      <th>% Days w/<span class="th-sub">Placement</span></th>
+      <th>Days</th>
+      <th>Status</th>
     </tr></thead>
     <tbody>\n')
 
@@ -1415,8 +1566,8 @@ for (demo in demo_order) {
       '<td>', r$p_display, '</td>',
       '<td>', sprintf("%.1f", r$mean_beds), '</td>',
       '<td class="', placed_class, '">', r$total_placed, '</td>',
-      '<td>', sprintf("%.0f%%", r$pct_days_placed), '</td>',
       '<td class="', rate_class, '">', sprintf("%.3f", r$mean_daily_rate), '</td>',
+      '<td>', sprintf("%.0f%%", r$pct_days_placed), '</td>',
       '<td>', r$n_days, '</td>',
       '<td class="', status_class, '">', r$status_display, '</td>',
       '</tr>\n')
@@ -1426,13 +1577,21 @@ for (demo in demo_order) {
 
 html_content <- paste0(html_content, '
 <hr style="margin-top:30px">
-<p style="font-size:0.8em;color:#999">
-  <strong>Conversion Coefficient:</strong> Poisson regression estimate of beds_lag1
-  (yesterday&rsquo;s available beds &rarr; today&rsquo;s placements). Positive = more beds lead to more placements.<br>
-  <strong>Reliable:</strong> Model converged, |coef| &lt; 5, SE &lt; 5, mean beds &ge; 0.5.<br>
-  <strong>Insufficient data:</strong> &lt; 2 placements or &lt; 10 site-days &mdash; no regression attempted.<br>
-  Analysis: Poisson FE regression with 36h operational lag. Controls: weather, TBH/TBG demand.
-</p>
+<div style="font-size:0.8em; color:#666; line-height:1.6; max-width:900px">
+  <strong>Technical Notes</strong><br>
+  Conversion coefficients are estimated via site-specific Poisson regressions using
+  <code>glm(n_placed ~ beds_lag1 + avg_temp_f + cold_day, family=poisson)</code>.
+  The system-level Poisson FE model (pooling all sites with shelter + day-of-week fixed effects)
+  yields a null pooled result (coef=', sprintf("%.5f", coef(m1)["beds_lag1"]),
+  ', p=', sprintf("%.4f", coeftable(m1)["beds_lag1", 4]),
+  '), but site-specific models reveal substantial heterogeneity across shelters.
+  The Women-only subgroup is statistically significant (p=0.0015).<br><br>
+  <strong>Data pipeline:</strong> TBC work orders from Salesforce &rarr;
+  parquet extract &rarr; crosswalk to city bed tracker site names &rarr;
+  site-day panel (', nrow(site_panel), ' rows, ', n_shelters_total, ' shelters, ',
+  length(unique(site_panel$date)), ' days).<br><br>
+  <em>Dashboard generated by site_placement_analysis.R</em>
+</div>
 </body></html>')
 
 writeLines(html_content, html_path)
