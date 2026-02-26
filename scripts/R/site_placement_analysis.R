@@ -141,15 +141,28 @@ log_msg <- function(...) {
   flush(log_con)
 }
 
+# --- ASH Brand Palette -------------------------------------------------------
+ash_green      <- "#05cda3"
+ash_blue       <- "#011f5b"
+accent_gray    <- "#525252"
+positive_green <- "#15803d"
+negative_red   <- "#b91c1c"
+
 # --- Theme -------------------------------------------------------------------
 theme_report <- theme_minimal(base_size = 12) +
   theme(
-    plot.title    = element_text(face = "bold", size = 14),
+    plot.title    = element_text(face = "bold", size = 14, color = ash_blue),
     plot.subtitle = element_text(color = "grey40"),
     legend.position = "bottom"
   )
 
-pop_colors <- c(Men = "#2c7bb6", Women = "#d7191c", Youth = "#fdae61")
+pop_colors <- c(Men = ash_blue, Women = negative_red, Youth = ash_green)
+
+# --- Sites excluded from analysis -------------------------------------------
+# EHARC and AIC do not participate in the TBC placement pipeline for
+# singles/families. Their massive bed counts with near-zero TBC placements
+# would distort the statistical models.
+EXCLUDED_SITES <- c("The Salvation Army - EHARC", "AIC")
 
 # --- Run header --------------------------------------------------------------
 log_msg("\n==========================================================\n")
@@ -476,11 +489,16 @@ bed_by_group <- bed_by_group %>%
     beds_lag1 = lag(shift2_available, 1),
     beds_lag2 = lag(shift2_available, 2),
     beds_avg_2d = (beds_lag1 + beds_lag2) / 2,
-    utilization_lag1 = lag(utilization_s2, 1)
+    utilization_lag1 = lag(utilization_s2, 1),
+    # Log-transformed beds for scale-invariant specification
+    log_beds_lag0   = log(beds_lag0 + 1),
+    log_beds_lag1   = log(beds_lag1 + 1),
+    log_beds_lag2   = log(beds_lag2 + 1),
+    log_beds_avg_2d = log(beds_avg_2d + 1)
   ) %>%
   ungroup()
 
-log_msg("  Lag variables created (lag0, lag1, lag2, avg_2d)\n")
+log_msg("  Lag variables created (lag0, lag1, lag2, avg_2d, log-transformed)\n")
 
 # --- 3.4: Aggregate placements to site-day -----------------------------------
 # Each placed case gets mapped to its shelter_group via the crosswalk
@@ -516,6 +534,24 @@ site_panel <- bed_by_group %>%
   ) %>%
   # Drop rows where lag-1 is NA (first day of each site)
   filter(!is.na(beds_lag1))
+
+# --- 3.6: Exclude non-pipeline shelters --------------------------------------
+# EHARC and AIC don't participate in TBC singles/families placements.
+# Their massive bed counts with near-zero TBC placements distort models.
+n_before <- nrow(site_panel)
+excluded_shelters <- site_panel %>%
+  filter(shelter_group %in% EXCLUDED_SITES) %>%
+  group_by(shelter_group) %>%
+  summarise(beds = round(mean(beds_lag1, na.rm = TRUE), 1),
+            placed = sum(n_placed), .groups = "drop")
+site_panel <- site_panel %>% filter(!(shelter_group %in% EXCLUDED_SITES))
+log_msg("  Excluded from analysis (not in TBC placement pipeline):\n")
+for (i in seq_len(nrow(excluded_shelters))) {
+  log_msg("    ", excluded_shelters$shelter_group[i],
+          " (avg beds=", excluded_shelters$beds[i],
+          ", placed=", excluded_shelters$placed[i], ")\n")
+}
+log_msg("  Rows removed: ", n_before - nrow(site_panel), "\n\n")
 
 # Save panel
 write_csv(site_panel, file.path(data_dir, "site_day_panel.csv"))
@@ -660,15 +696,15 @@ site_panel <- site_panel %>%
 # --- Model 1: Primary — Lag-1 Site FE Poisson --------------------------------
 log_msg("  M1: Lag-1 Poisson FE (PRIMARY)\n")
 m1 <- tryCatch(
-  fepois(n_placed ~ beds_lag1 + avg_temp_f + cold_day +
-           daily_tbh_closures + daily_tbg_closures |
+  fepois(n_placed ~ log_beds_lag1 + avg_temp_f + cold_day +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date,
          data = site_panel),
   error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
 )
 if (!is.null(m1)) {
-  log_msg("    Beds (lag1) coef: ", round(coef(m1)["beds_lag1"], 6), "\n")
+  log_msg("    log(beds+1) (lag1) coef: ", round(coef(m1)["log_beds_lag1"], 6), "\n")
   log_msg(capture.output(summary(m1)), sep = "\n")
   log_msg("\n\n")
 }
@@ -676,15 +712,15 @@ if (!is.null(m1)) {
 # --- Model 2: Lag-1 OLS FE ---------------------------------------------------
 log_msg("  M2: Lag-1 OLS FE\n")
 m2 <- tryCatch(
-  feols(n_placed ~ beds_lag1 + avg_temp_f + cold_day +
-          daily_tbh_closures + daily_tbg_closures |
+  feols(n_placed ~ log_beds_lag1 + avg_temp_f + cold_day +
+          tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
           site_fe + dow_fe,
         cluster = ~date,
         data = site_panel),
   error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
 )
 if (!is.null(m2)) {
-  log_msg("    Beds (lag1) coef: ", round(coef(m2)["beds_lag1"], 6), "\n")
+  log_msg("    log(beds+1) (lag1) coef: ", round(coef(m2)["log_beds_lag1"], 6), "\n")
   log_msg(capture.output(summary(m2)), sep = "\n")
   log_msg("\n\n")
 }
@@ -693,7 +729,7 @@ if (!is.null(m2)) {
 log_msg("  M3: Utilization (lag-1) Poisson FE\n")
 m3 <- tryCatch(
   fepois(n_placed ~ utilization_lag1 + avg_temp_f + cold_day +
-           daily_tbh_closures + daily_tbg_closures |
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date,
          data = site_panel %>% filter(!is.na(utilization_lag1))),
@@ -711,8 +747,8 @@ site_panel <- site_panel %>%
   mutate(large_site = as.integer(capacity > 50))
 
 m4 <- tryCatch(
-  fepois(n_placed ~ beds_lag1 * large_site + avg_temp_f + cold_day +
-           daily_tbh_closures + daily_tbg_closures |
+  fepois(n_placed ~ log_beds_lag1 * large_site + avg_temp_f + cold_day +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date,
          data = site_panel),
@@ -726,8 +762,8 @@ if (!is.null(m4)) {
 # --- Model 5: Weather interaction (cold days) ---------------------------------
 log_msg("  M5: Weather interaction (beds x cold day)\n")
 m5 <- tryCatch(
-  fepois(n_placed ~ beds_lag1 * cold_day + avg_temp_f +
-           daily_tbh_closures + daily_tbg_closures |
+  fepois(n_placed ~ log_beds_lag1 * cold_day + avg_temp_f +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date,
          data = site_panel),
@@ -741,8 +777,8 @@ if (!is.null(m5)) {
 # --- Model 6: Distributed lag (lag0 + lag1 + lag2) ----------------------------
 log_msg("  M6: Distributed lag (lag0 + lag1 + lag2)\n")
 m6 <- tryCatch(
-  fepois(n_placed ~ beds_lag0 + beds_lag1 + beds_lag2 + avg_temp_f + cold_day +
-           daily_tbh_closures + daily_tbg_closures |
+  fepois(n_placed ~ log_beds_lag0 + log_beds_lag1 + log_beds_lag2 + avg_temp_f + cold_day +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date,
          data = site_panel %>% filter(!is.na(beds_lag2))),
@@ -750,10 +786,10 @@ m6 <- tryCatch(
 )
 if (!is.null(m6)) {
   log_msg(capture.output(summary(m6)), sep = "\n")
-  cum_effect <- sum(coef(m6)[c("beds_lag0", "beds_lag1", "beds_lag2")])
-  log_msg("\n  Cumulative 3-day effect: ", round(cum_effect, 6), "\n")
-  log_msg("  Interpretation: One additional bed-day generates ~",
-          round(cum_effect, 4), " placements over 3 days\n\n")
+  cum_effect <- sum(coef(m6)[c("log_beds_lag0", "log_beds_lag1", "log_beds_lag2")])
+  log_msg("\n  Cumulative 3-day effect (log-scale): ", round(cum_effect, 6), "\n")
+  log_msg("  Interpretation: Doubling beds generates ~",
+          round((2^cum_effect - 1) * 100, 1), "% change in placements over 3 days\n\n")
 }
 
 
@@ -765,7 +801,7 @@ log_msg("--- Step 6: Sensitivity & Robustness ---\n\n")
 sensitivity_results <- list()
 
 # Helper to extract bed coefficient safely
-extract_bed_coef <- function(model, varname = "beds_lag1") {
+extract_bed_coef <- function(model, varname = "log_beds_lag1") {
   if (is.null(model)) return(tibble(estimate = NA, std.error = NA, p.value = NA))
   ct <- coeftable(model)
   if (varname %in% rownames(ct)) {
@@ -782,52 +818,52 @@ sensitivity_results[["M1_primary_lag1"]] <- extract_bed_coef(m1) %>%
 # --- 6a: Lag-0 (same-day) — expect attenuated --------------------------------
 log_msg("  S-a: Lag-0 (same-day beds)\n")
 sa <- tryCatch(
-  fepois(n_placed ~ beds_lag0 + avg_temp_f + cold_day +
-           daily_tbh_closures + daily_tbg_closures |
+  fepois(n_placed ~ log_beds_lag0 + avg_temp_f + cold_day +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date, data = site_panel),
   error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
 )
-sensitivity_results[["Sa_lag0"]] <- extract_bed_coef(sa, "beds_lag0") %>%
+sensitivity_results[["Sa_lag0"]] <- extract_bed_coef(sa, "log_beds_lag0") %>%
   mutate(variant = "S-a: Lag-0 (same day)", lag = 0)
 
 # --- 6b: Lag-2 ----------------------------------------------------------------
 log_msg("  S-b: Lag-2 (two-day lag)\n")
 sb <- tryCatch(
-  fepois(n_placed ~ beds_lag2 + avg_temp_f + cold_day +
-           daily_tbh_closures + daily_tbg_closures |
+  fepois(n_placed ~ log_beds_lag2 + avg_temp_f + cold_day +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date,
          data = site_panel %>% filter(!is.na(beds_lag2))),
   error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
 )
-sensitivity_results[["Sb_lag2"]] <- extract_bed_coef(sb, "beds_lag2") %>%
+sensitivity_results[["Sb_lag2"]] <- extract_bed_coef(sb, "log_beds_lag2") %>%
   mutate(variant = "S-b: Lag-2 (2 days)", lag = 2)
 
 # --- 6c: 2-day rolling average ------------------------------------------------
 log_msg("  S-c: 2-day rolling average\n")
 sc <- tryCatch(
-  fepois(n_placed ~ beds_avg_2d + avg_temp_f + cold_day +
-           daily_tbh_closures + daily_tbg_closures |
+  fepois(n_placed ~ log_beds_avg_2d + avg_temp_f + cold_day +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date,
          data = site_panel %>% filter(!is.na(beds_avg_2d))),
   error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
 )
-sensitivity_results[["Sc_avg2d"]] <- extract_bed_coef(sc, "beds_avg_2d") %>%
+sensitivity_results[["Sc_avg2d"]] <- extract_bed_coef(sc, "log_beds_avg_2d") %>%
   mutate(variant = "S-c: 2-day avg", lag = 1.5)
 
 # --- 6d: Date FE instead of DOW (absorbs all daily shocks) --------------------
 log_msg("  S-d: Date FE (absorbs all daily variation)\n")
 site_panel <- site_panel %>% mutate(date_fe = factor(date))
 sd_model <- tryCatch(
-  fepois(n_placed ~ beds_lag1 |
+  fepois(n_placed ~ log_beds_lag1 |
            site_fe + date_fe,
          cluster = ~date,
          data = site_panel),
   error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
 )
-sensitivity_results[["Sd_date_fe"]] <- extract_bed_coef(sd_model) %>%
+sensitivity_results[["Sd_date_fe"]] <- extract_bed_coef(sd_model, "log_beds_lag1") %>%
   mutate(variant = "S-d: Date FE", lag = 1)
 
 # --- 6e: Population-specific -------------------------------------------------
@@ -868,41 +904,54 @@ for (pop_name in c("Men", "Women")) {
     next
   }
   se_model <- tryCatch(
-    fepois(n_placed ~ beds_lag1 + avg_temp_f + cold_day +
-             daily_tbh_closures + daily_tbg_closures |
+    fepois(n_placed ~ log_beds_lag1 + avg_temp_f + cold_day +
+             tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
              site_fe + dow_fe,
            cluster = ~date, data = pop_data),
     error = function(e) { log_msg("    ", pop_name, " ERROR: ", e$message, "\n"); NULL }
   )
-  sensitivity_results[[paste0("Se_", tolower(pop_name))]] <- extract_bed_coef(se_model) %>%
+  sensitivity_results[[paste0("Se_", tolower(pop_name))]] <- extract_bed_coef(se_model, "log_beds_lag1") %>%
     mutate(variant = paste0("S-e: ", pop_name, " only"), lag = 1)
 }
 
 # --- 6f: Negative binomial (overdispersion check) ----------------------------
 log_msg("  S-f: Negative binomial (overdispersion check)\n")
 sf_model <- tryCatch(
-  fenegbin(n_placed ~ beds_lag1 + avg_temp_f + cold_day +
-             daily_tbh_closures + daily_tbg_closures |
+  fenegbin(n_placed ~ log_beds_lag1 + avg_temp_f + cold_day +
+             tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
              site_fe + dow_fe,
            cluster = ~date,
            data = site_panel),
   error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
 )
-sensitivity_results[["Sf_negbin"]] <- extract_bed_coef(sf_model) %>%
+sensitivity_results[["Sf_negbin"]] <- extract_bed_coef(sf_model, "log_beds_lag1") %>%
   mutate(variant = "S-f: Neg. Binomial", lag = 1)
 
 # --- 6g: Large sites only (capacity > 20) ------------------------------------
 log_msg("  S-g: Large sites only (capacity > 20)\n")
 sg <- tryCatch(
-  fepois(n_placed ~ beds_lag1 + avg_temp_f + cold_day +
-           daily_tbh_closures + daily_tbg_closures |
+  fepois(n_placed ~ log_beds_lag1 + avg_temp_f + cold_day +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
            site_fe + dow_fe,
          cluster = ~date,
          data = site_panel %>% filter(capacity > 20)),
   error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
 )
-sensitivity_results[["Sg_large"]] <- extract_bed_coef(sg) %>%
+sensitivity_results[["Sg_large"]] <- extract_bed_coef(sg, "log_beds_lag1") %>%
   mutate(variant = "S-g: Large sites (cap>20)", lag = 1)
+
+# --- S-raw: Raw beds (comparison with log specification) ---------------------
+log_msg("  S-raw: Raw beds (comparison)\n")
+s_raw <- tryCatch(
+  fepois(n_placed ~ beds_lag1 + avg_temp_f + cold_day +
+           tbc_open_caseload + daily_tbh_closures + daily_tbg_closures |
+           site_fe + dow_fe,
+         cluster = ~date,
+         data = site_panel),
+  error = function(e) { log_msg("    ERROR: ", e$message, "\n"); NULL }
+)
+sensitivity_results[["S_raw_beds"]] <- extract_bed_coef(s_raw, "beds_lag1") %>%
+  mutate(variant = "S-raw: Raw beds (comparison)", lag = 1)
 
 # Combine sensitivity results
 sensitivity_df <- bind_rows(sensitivity_results)
@@ -1081,30 +1130,33 @@ conversion_results <- lapply(all_sites, function(site) {
   n_placed_total <- sum(site_data$n_placed)
   n_days_total   <- nrow(site_data)
   mean_beds_val  <- mean(site_data$beds_lag1, na.rm = TRUE)
+  sd_beds_val    <- sd(site_data$log_beds_lag1, na.rm = TRUE)
 
   # Attempt Poisson regression if enough variation
   mod <- NULL
   coef_val <- NA_real_; se_val <- NA_real_; p_val <- NA_real_
   model_status <- "no_model"
 
-  if (n_placed_total >= 2 && n_days_total >= 10 && !is.na(mean_beds_val)) {
+  # Tightened thresholds: >=3 placements, >=14 days, meaningful bed variance
+  if (n_placed_total >= 3 && n_days_total >= 14 &&
+      !is.na(mean_beds_val) && !is.na(sd_beds_val) && sd_beds_val > 0.1) {
     mod <- tryCatch(
-      glm(n_placed ~ beds_lag1 + avg_temp_f + cold_day,
+      glm(n_placed ~ log_beds_lag1 + avg_temp_f + cold_day + tbc_open_caseload,
           family = poisson, data = site_data),
       error = function(e) NULL,
       warning = function(w) {
         suppressWarnings(
-          glm(n_placed ~ beds_lag1 + avg_temp_f + cold_day,
+          glm(n_placed ~ log_beds_lag1 + avg_temp_f + cold_day + tbc_open_caseload,
               family = poisson, data = site_data)
         )
       }
     )
     if (!is.null(mod)) {
       ct <- tryCatch(summary(mod)$coefficients, error = function(e) NULL)
-      if (!is.null(ct) && "beds_lag1" %in% rownames(ct)) {
-        coef_val <- ct["beds_lag1", 1]
-        se_val   <- ct["beds_lag1", 2]
-        p_val    <- ct["beds_lag1", 4]
+      if (!is.null(ct) && "log_beds_lag1" %in% rownames(ct)) {
+        coef_val <- ct["log_beds_lag1", 1]
+        se_val   <- ct["log_beds_lag1", 2]
+        p_val    <- ct["log_beds_lag1", 4]
         model_status <- "converged"
       } else {
         model_status <- "no_beds_coef"
@@ -1123,17 +1175,22 @@ conversion_results <- lapply(all_sites, function(site) {
     conversion_p    = p_val,
     total_placed    = n_placed_total,
     mean_beds       = mean_beds_val,
+    sd_beds         = sd_beds_val,
     n_days          = n_days_total,
     mean_daily_rate = mean(site_data$n_placed),
     model_status    = model_status
   )
 }) %>% bind_rows()
 
-# Flag reliability (for ranking, not for exclusion from heatmap)
+# Tightened reliability criteria for log-beds specification
 conversion_results <- conversion_results %>%
   mutate(
     reliable = model_status == "converged" &
-               abs(conversion_coef) < 5 & conversion_se < 5 & mean_beds >= 0.5,
+               total_placed >= 5 &
+               mean_beds >= 1.0 &
+               sd_beds > 0.5 &
+               abs(conversion_coef) < 3 &
+               conversion_se < 2,
     reliable = ifelse(is.na(reliable), FALSE, reliable)
   ) %>%
   arrange(desc(reliable), desc(conversion_coef))
@@ -1372,8 +1429,8 @@ html_content <- paste0('<!DOCTYPE html>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
          margin: 20px; background: #fafafa; color: #333; max-width: 1400px; }
-  h1 { font-size: 1.6em; margin-bottom: 4px; color: #2c3e50; }
-  h2 { font-size: 1.2em; color: #2c3e50; margin-top: 30px; margin-bottom: 10px; }
+  h1 { font-size: 1.6em; margin-bottom: 4px; color: ', ash_blue, '; }
+  h2 { font-size: 1.2em; color: ', ash_blue, '; margin-top: 30px; margin-bottom: 10px; }
   .subtitle { color: #666; font-size: 0.9em; margin-bottom: 5px; }
   .timestamp { color: #999; font-size: 0.8em; margin-bottom: 20px; }
 
@@ -1381,7 +1438,7 @@ html_content <- paste0('<!DOCTYPE html>
   .summary-panel { background: white; border: 1px solid #dee2e6; border-radius: 8px;
                    padding: 20px 24px; margin-bottom: 24px;
                    box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  .summary-panel h2 { margin-top: 0; font-size: 1.15em; border-bottom: 2px solid #2c3e50;
+  .summary-panel h2 { margin-top: 0; font-size: 1.15em; border-bottom: 2px solid ', ash_blue, ';
                        padding-bottom: 6px; }
   .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
   .summary-box { background: #f8f9fa; border-radius: 6px; padding: 12px 16px; }
@@ -1394,29 +1451,29 @@ html_content <- paste0('<!DOCTYPE html>
   .stat-row { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
   .stat-card { background: white; border: 1px solid #dee2e6; border-radius: 6px;
                padding: 12px 16px; text-align: center; min-width: 120px; flex: 1; }
-  .stat-card .stat-value { font-size: 1.5em; font-weight: bold; color: #2c3e50; }
+  .stat-card .stat-value { font-size: 1.5em; font-weight: bold; color: ', ash_blue, '; }
   .stat-card .stat-label { font-size: 0.78em; color: #888; margin-top: 2px; }
 
   /* Data tables */
   .demo-section { margin-bottom: 30px; }
-  .demo-header { background: #2c3e50; color: white; padding: 8px 16px;
+  .demo-header { background: ', ash_blue, '; color: white; padding: 8px 16px;
                  border-radius: 6px 6px 0 0; font-size: 1.1em; font-weight: bold; }
   table { border-collapse: collapse; width: 100%; background: white;
           box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-  th { background: #34495e; color: white; padding: 10px 12px; text-align: left;
+  th { background: ', ash_blue, '; color: white; padding: 10px 12px; text-align: left;
        font-size: 0.82em; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
   th .th-sub { font-weight: normal; font-size: 0.85em; color: #adb5bd; display: block; }
   td { padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 0.85em; }
-  tr:hover { background: #f0f7ff; }
-  .coef-pos { color: #1a9641; font-weight: bold; }
-  .coef-neg { color: #d7191c; font-weight: bold; }
-  .coef-na  { color: #999; font-style: italic; }
-  .reliable { color: #1a9641; font-weight: 600; }
+  tr:hover { background: ', ash_green, '22; }
+  .coef-pos { color: ', positive_green, '; font-weight: bold; }
+  .coef-neg { color: ', negative_red, '; font-weight: bold; }
+  .coef-na  { color: ', accent_gray, '; font-style: italic; }
+  .reliable { color: ', positive_green, '; font-weight: 600; }
   .unreliable { color: #e67e22; }
   .no-data { color: #999; font-style: italic; }
-  .metric-high { background: #d4edda; }
+  .metric-high { background: ', positive_green, '22; }
   .metric-mid  { background: #fff3cd; }
-  .metric-low  { background: #f8d7da; }
+  .metric-low  { background: ', negative_red, '22; }
 </style>
 </head>
 <body>
@@ -1451,8 +1508,8 @@ html_content <- paste0('<!DOCTYPE html>
 <div class="summary-grid">
   <div class="summary-box">
     <h3>What is the Conversion Coefficient?</h3>
-    <p>Each shelter gets a <strong>Poisson regression</strong> estimating: <em>&ldquo;When this shelter had
-    one more bed open yesterday, how many additional placements did it make today?&rdquo;</em></p>
+    <p>Each shelter gets a <strong>Poisson regression</strong> estimating: <em>&ldquo;When this shelter&rsquo;s
+    available beds double, how does its placement rate change?&rdquo;</em></p>
     <ul>
       <li><strong>Positive coefficient</strong> (green) = more open beds &rarr; more placements. The shelter
           efficiently converts available capacity into placements.</li>
@@ -1462,20 +1519,22 @@ html_content <- paste0('<!DOCTYPE html>
           This is counterintuitive and usually reflects low overall volume or operational issues
           rather than a causal effect.</li>
     </ul>
-    <p>The coefficient is in <strong>log-rate units</strong>. A coefficient of 0.30 means each additional
-    bed increases the daily placement rate by about 35% (exp(0.30) &approx; 1.35).</p>
+    <p>Beds are <strong>log-transformed</strong> to handle the wide range of shelter sizes.
+    A coefficient of 0.50 means doubling available beds increases placements by about
+    41% (2<sup>0.50</sup> &minus; 1 &approx; 0.41). The model also controls for system-wide
+    demand (<code>tbc_open_caseload</code>).</p>
   </div>
 
   <div class="summary-box">
     <h3>Status Definitions</h3>
     <ul>
-      <li><strong style="color:#1a9641">&check; Reliable:</strong> Regression converged with a numerically
-          stable estimate. Criteria: |coefficient| &lt; 5, standard error &lt; 5, and mean
-          available beds &ge; 0.5. <strong>Use these for operational decision-making.</strong></li>
+      <li><strong style="color:', positive_green, '">&check; Reliable:</strong> Regression converged with a numerically
+          stable estimate. Criteria: &ge; 5 placements, mean beds &ge; 1.0, bed variation
+          (SD &gt; 0.5), |coefficient| &lt; 3, and SE &lt; 2. <strong>Use these for operational decision-making.</strong></li>
       <li><strong style="color:#e67e22">Unreliable estimate:</strong> Regression converged but produced extreme
-          or numerically unstable results&mdash;typically because the shelter has near-zero beds on most days,
-          very few placements, or both. <strong>Do not use for comparisons.</strong></li>
-      <li><strong style="color:#999">Insufficient data:</strong> Fewer than 2 total placements or fewer than 10
+          or numerically unstable results&mdash;typically because the shelter has very few placements,
+          low bed variance, or both. <strong>Do not use for comparisons.</strong></li>
+      <li><strong style="color:', accent_gray, '">Insufficient data:</strong> Fewer than 3 total placements or fewer than 14
           site-days in the analysis period. No regression was attempted.
           <strong>Monitor as more data accumulates.</strong></li>
     </ul>
@@ -1503,13 +1562,19 @@ html_content <- paste0('<!DOCTYPE html>
     <h3>Methodology</h3>
     <ul>
       <li><strong>Data:</strong> TBC placements from Salesforce matched to city bed tracker via a curated
-          crosswalk (90% coverage of eligible placed cases).</li>
-      <li><strong>Model:</strong> Site-specific Poisson regression: <code>placements ~ beds_lag1 + temperature
-          + cold_day</code> for each shelter independently.</li>
-      <li><strong>Lag:</strong> Uses <strong>yesterday&rsquo;s 9am bed count</strong> (lag-1) to predict
+          crosswalk (90% coverage of eligible placed cases). EHARC and AIC excluded (not in TBC
+          singles/families pipeline).</li>
+      <li><strong>Model:</strong> Site-specific Poisson regression: <code>placements ~ log(beds_lag1+1)
+          + tbc_open_caseload + temperature + cold_day</code> for each shelter independently.</li>
+      <li><strong>Beds (log-transformed):</strong> Uses <strong>log(yesterday&rsquo;s 9am bed count + 1)</strong>
+          to handle the wide range of shelter sizes. Coefficient has an elasticity-like interpretation:
+          doubling available beds &rarr; roughly <em>2<sup>&beta;</sup> &minus; 1</em> percent change in placements.</li>
+      <li><strong>Demand control:</strong> Daily count of open TBC cases (<code>tbc_open_caseload</code>)
+          controls for system-wide demand pressure on any given day.</li>
+      <li><strong>Lag:</strong> Uses <strong>lag-1 (yesterday&rsquo;s 9am beds)</strong> to predict
           today&rsquo;s placements, reflecting the ~36-hour operational pipeline from bed availability
           to case closure in Salesforce.</li>
-      <li><strong>Controls:</strong> Average temperature and cold-day indicator (min &lt; 20&deg;F)
+      <li><strong>Weather controls:</strong> Average temperature and cold-day indicator (min &lt; 20&deg;F)
           control for weather-driven demand variation.</li>
       <li><strong>Period:</strong> ', analysis_start_str, ' through ', analysis_end_str,
           ' (', length(unique(site_panel$date)), ' days).</li>
@@ -1533,7 +1598,7 @@ html_content <- paste0('<!DOCTYPE html>
 <thead><tr style="background:#f8f9fa"><th style="background:#f8f9fa;color:#333">Column</th>
 <th style="background:#f8f9fa;color:#333">Description</th></tr></thead>
 <tbody>
-<tr><td><strong>Conv. Coeff.</strong></td><td>Poisson regression coefficient for beds_lag1. How much one additional open bed (yesterday) changes the log placement rate (today).</td></tr>
+<tr><td><strong>Conv. Coeff.</strong></td><td>Poisson regression coefficient for log(beds_lag1+1). How much a proportional increase in open beds (yesterday) changes the log placement rate (today). Controls for TBC caseload demand.</td></tr>
 <tr><td><strong>SE</strong></td><td>Standard error of the coefficient. Smaller = more precise estimate.</td></tr>
 <tr><td><strong>p-value</strong></td><td>Statistical significance. Below 0.05 = strong evidence the coefficient is not zero.</td></tr>
 <tr><td><strong>Mean Beds (lag-1)</strong></td><td>Average number of beds open at 9am on the previous day across the analysis period.</td></tr>
@@ -1606,12 +1671,13 @@ html_content <- paste0(html_content, '
 <div style="font-size:0.8em; color:#666; line-height:1.6; max-width:900px">
   <strong>Technical Notes</strong><br>
   Conversion coefficients are estimated via site-specific Poisson regressions using
-  <code>glm(n_placed ~ beds_lag1 + avg_temp_f + cold_day, family=poisson)</code>.
+  <code>glm(n_placed ~ log(beds_lag1+1) + tbc_open_caseload + avg_temp_f + cold_day, family=poisson)</code>.
+  Beds are log-transformed for scale invariance; TBC open caseload controls for system demand.
+  EHARC and AIC excluded (not in TBC singles/families pipeline).
   The system-level Poisson FE model (pooling all sites with shelter + day-of-week fixed effects)
-  yields a null pooled result (coef=', sprintf("%.5f", coef(m1)["beds_lag1"]),
-  ', p=', sprintf("%.4f", coeftable(m1)["beds_lag1", 4]),
-  '), but site-specific models reveal substantial heterogeneity across shelters.
-  The Women-only subgroup is statistically significant (p=0.0015).<br><br>
+  yields a pooled result (coef=', sprintf("%.5f", coef(m1)["log_beds_lag1"]),
+  ', p=', sprintf("%.4f", coeftable(m1)["log_beds_lag1", 4]),
+  '), but site-specific models reveal substantial heterogeneity across shelters.<br><br>
   <strong>Data pipeline:</strong> TBC work orders from Salesforce &rarr;
   parquet extract &rarr; crosswalk to city bed tracker site names &rarr;
   site-day panel (', nrow(site_panel), ' rows, ', n_shelters_total, ' shelters, ',
@@ -1622,6 +1688,287 @@ html_content <- paste0(html_content, '
 
 writeLines(html_content, html_path)
 log_msg("  Interactive HTML saved: ", basename(html_path), "\n\n")
+
+
+# --- Plot 12: KPI Operations Dashboard (non-technical, 48h lag) -------------
+# Purely descriptive KPIs — no regression coefficients. For leadership/ops.
+log_msg("  Generating KPI Operations Dashboard (Plot 12)...\n")
+
+kpi_path <- file.path(fig_dir, "12_kpi_operations_dashboard.html")
+
+# Build KPI data using 48-hour lag (beds_lag2)
+kpi_data <- site_panel %>%
+  group_by(shelter_group) %>%
+  summarise(
+    total_placed      = sum(n_placed),
+    total_bed_days    = sum(beds_lag2, na.rm = TRUE),
+    placements_per_bed = ifelse(total_bed_days > 0, total_placed / total_bed_days, NA_real_),
+    mean_daily_rate   = mean(n_placed),
+    pct_days_placed   = 100 * mean(n_placed > 0),
+    mean_beds_48h     = mean(beds_lag2, na.rm = TRUE),
+    mean_utilization  = mean(utilization_lag1, na.rm = TRUE),
+    n_days            = n(),
+    n_days_placed     = sum(n_placed > 0),
+    velocity          = ifelse(sum(n_placed > 0) > 0, sum(n_placed) / sum(n_placed > 0), 0),
+    .groups = "drop"
+  ) %>%
+  left_join(site_pop %>% select(shelter_group, demographic), by = "shelter_group")
+
+# System-wide KPIs
+sys_total_placed <- sum(kpi_data$total_placed)
+sys_total_bed_days <- sum(kpi_data$total_bed_days, na.rm = TRUE)
+sys_placements_per_bed <- ifelse(sys_total_bed_days > 0, sys_total_placed / sys_total_bed_days, NA)
+n_active_shelters <- sum(kpi_data$total_placed > 0)
+n_analysis_days <- length(unique(site_panel$date))
+
+# Performance tiers (tercile of placements-per-bed among shelters with data)
+kpi_with_data <- kpi_data %>% filter(!is.na(placements_per_bed) & total_placed >= 3)
+if (nrow(kpi_with_data) >= 3) {
+  ppb_terciles <- quantile(kpi_with_data$placements_per_bed, probs = c(1/3, 2/3), na.rm = TRUE)
+} else {
+  ppb_terciles <- c(0, Inf)
+}
+
+kpi_data <- kpi_data %>%
+  mutate(
+    tier = case_when(
+      total_placed < 3 | n_days < 14           ~ "Insufficient Data",
+      placements_per_bed >= ppb_terciles[2]     ~ "High Performer",
+      placements_per_bed >= ppb_terciles[1]     ~ "Average",
+      TRUE                                      ~ "Needs Attention"
+    ),
+    tier_color = case_when(
+      tier == "High Performer"    ~ positive_green,
+      tier == "Average"           ~ accent_gray,
+      tier == "Needs Attention"   ~ negative_red,
+      tier == "Insufficient Data" ~ "#999999"
+    )
+  )
+
+# Sort within demographic by placements_per_bed descending
+kpi_data <- kpi_data %>%
+  arrange(demographic, desc(placements_per_bed))
+
+# Create shelter display label (shorter names)
+kpi_data <- kpi_data %>%
+  mutate(shelter_label = gsub("^The Salvation Army - ", "TSA ", shelter_group))
+
+# Build HTML
+kpi_html <- paste0('<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shelter Placement Operations Dashboard</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         margin: 0; padding: 20px; background: #f5f6f8; color: #333; }
+  .container { max-width: 1400px; margin: 0 auto; }
+
+  /* Header */
+  .header { background: ', ash_blue, '; color: white; padding: 24px 32px;
+            border-radius: 10px; margin-bottom: 24px; }
+  .header h1 { margin: 0 0 4px 0; font-size: 1.6em; }
+  .header .subtitle { color: ', ash_green, '; font-size: 0.95em; margin-bottom: 4px; }
+  .header .meta { color: rgba(255,255,255,0.7); font-size: 0.82em; }
+
+  /* System KPI cards */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: white; border-radius: 8px; padding: 20px; text-align: center;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 4px solid ', ash_green, '; }
+  .kpi-card .kpi-value { font-size: 2em; font-weight: bold; color: ', ash_blue, '; }
+  .kpi-card .kpi-label { font-size: 0.82em; color: ', accent_gray, '; margin-top: 4px; }
+  .kpi-card .kpi-detail { font-size: 0.75em; color: #999; margin-top: 2px; }
+
+  /* Tier legend */
+  .legend { display: flex; gap: 20px; margin-bottom: 20px; padding: 12px 20px;
+            background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.85em; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+  /* Demographic sections */
+  .demo-section { margin-bottom: 28px; }
+  .demo-title { background: ', ash_blue, '; color: white; padding: 10px 20px;
+                border-radius: 8px 8px 0 0; font-size: 1.05em; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; background: white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.06); border-radius: 0 0 8px 8px; overflow: hidden; }
+  th { background: ', ash_blue, 'ee; color: white; padding: 10px 14px; text-align: left;
+       font-size: 0.8em; font-weight: 600; white-space: nowrap; }
+  th .th-sub { font-weight: normal; font-size: 0.85em; color: rgba(255,255,255,0.7); display: block; }
+  td { padding: 10px 14px; border-bottom: 1px solid #eef0f2; font-size: 0.88em; }
+  tr:hover { background: ', ash_green, '11; }
+  tr:last-child td { border-bottom: none; }
+
+  /* Tier badges */
+  .tier-badge { display: inline-block; padding: 3px 10px; border-radius: 12px;
+                font-size: 0.78em; font-weight: 600; color: white; }
+
+  /* Metric highlights */
+  .metric-best { color: ', positive_green, '; font-weight: 700; }
+  .metric-worst { color: ', negative_red, '; font-weight: 600; }
+
+  /* Footer */
+  .footer { margin-top: 30px; padding: 16px 20px; font-size: 0.8em; color: #888;
+            background: white; border-radius: 8px; line-height: 1.7;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .footer strong { color: ', ash_blue, '; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .legend { flex-wrap: wrap; }
+  }
+  @media (max-width: 600px) {
+    .kpi-row { grid-template-columns: 1fr; }
+    body { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<div class="header">
+  <h1>Shelter Placement Operations Dashboard</h1>
+  <div class="subtitle">Performance KPIs by shelter &mdash; 48-hour bed availability lag</div>
+  <div class="meta">Period: ', analysis_start_str, ' to ', analysis_end_str,
+  ' (', n_analysis_days, ' days) | Generated: ', format(Sys.time(), "%Y-%m-%d %H:%M"),
+  ' | ', nrow(kpi_data), ' shelters</div>
+</div>
+
+<!-- System-wide KPI cards -->
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-value">', sys_total_placed, '</div>
+    <div class="kpi-label">Total Placements</div>
+    <div class="kpi-detail">', n_analysis_days, '-day period</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">', ifelse(!is.na(sys_placements_per_bed),
+      sprintf("%.4f", sys_placements_per_bed), "N/A"), '</div>
+    <div class="kpi-label">System Placements per Bed-Day</div>
+    <div class="kpi-detail">', format(round(sys_total_bed_days), big.mark = ","), ' total bed-days</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">', n_active_shelters, '</div>
+    <div class="kpi-label">Active Shelters</div>
+    <div class="kpi-detail">with &ge; 1 placement</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">', sprintf("%.1f", sys_total_placed / max(n_analysis_days, 1)), '</div>
+    <div class="kpi-label">System Daily Placement Rate</div>
+    <div class="kpi-detail">across all shelters</div>
+  </div>
+</div>
+
+<!-- Tier legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:', positive_green, '"></div>High Performer (top tercile)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:', accent_gray, '"></div>Average (middle tercile)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:', negative_red, '"></div>Needs Attention (bottom tercile)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#999"></div>Insufficient Data (&lt; 3 placements or &lt; 14 days)</div>
+</div>
+
+')
+
+# Build demographic sections
+for (demo in demo_order) {
+  demo_kpi <- kpi_data %>% filter(demographic == demo)
+  if (nrow(demo_kpi) == 0) next
+
+  # Find best/worst within group for highlighting
+  best_ppb <- max(demo_kpi$placements_per_bed, na.rm = TRUE)
+  worst_ppb <- min(demo_kpi$placements_per_bed[demo_kpi$total_placed >= 3], na.rm = TRUE)
+
+  kpi_html <- paste0(kpi_html,
+    '<div class="demo-section">
+    <div class="demo-title">', demo, ' (', nrow(demo_kpi), ' shelters &mdash; ',
+    sum(demo_kpi$total_placed), ' total placements)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Placements / Bed-Day<span class="th-sub">(48h lag)</span></th>
+      <th>Daily Rate<span class="th-sub">mean</span></th>
+      <th>Total<span class="th-sub">Placed</span></th>
+      <th>Consistency<span class="th-sub">% days active</span></th>
+      <th>Avg Beds<span class="th-sub">(48h)</span></th>
+      <th>Utilization<span class="th-sub">%</span></th>
+      <th>Velocity<span class="th-sub">per active day</span></th>
+      <th>Tier</th>
+    </tr></thead>
+    <tbody>\n')
+
+  for (j in seq_len(nrow(demo_kpi))) {
+    r <- demo_kpi[j, ]
+    # Highlight best/worst
+    ppb_class <- ""
+    if (!is.na(r$placements_per_bed)) {
+      if (r$placements_per_bed == best_ppb && r$total_placed >= 3) ppb_class <- ' class="metric-best"'
+      if (r$placements_per_bed == worst_ppb && r$total_placed >= 3 && nrow(demo_kpi %>% filter(total_placed >= 3)) > 1) ppb_class <- ' class="metric-worst"'
+    }
+
+    kpi_html <- paste0(kpi_html, '<tr>',
+      '<td><strong>', r$shelter_label, '</strong></td>',
+      '<td', ppb_class, '>', ifelse(!is.na(r$placements_per_bed),
+        sprintf("%.4f", r$placements_per_bed), "N/A"), '</td>',
+      '<td>', sprintf("%.2f", r$mean_daily_rate), '</td>',
+      '<td>', r$total_placed, '</td>',
+      '<td>', sprintf("%.0f%%", r$pct_days_placed), '</td>',
+      '<td>', sprintf("%.1f", r$mean_beds_48h), '</td>',
+      '<td>', ifelse(!is.na(r$mean_utilization), sprintf("%.0f%%", r$mean_utilization * 100), "N/A"), '</td>',
+      '<td>', sprintf("%.2f", r$velocity), '</td>',
+      '<td><span class="tier-badge" style="background:', r$tier_color, '">', r$tier, '</span></td>',
+      '</tr>\n')
+  }
+  kpi_html <- paste0(kpi_html, '</tbody></table></div>\n')
+}
+
+# Footer
+kpi_html <- paste0(kpi_html, '
+<!-- Footer -->
+<div class="footer">
+  <strong>About This Dashboard</strong><br>
+  This dashboard shows purely descriptive placement KPIs &mdash; no statistical modeling or regression
+  coefficients. It is designed for operational decision-making by leadership.<br><br>
+
+  <strong>What &ldquo;48-hour lag&rdquo; means:</strong> Bed counts reflect the number of beds open at
+  9am <em>two days before</em> a placement is recorded. This accounts for the full operational pipeline:
+
+  bed opens &rarr; candidate identified &rarr; submitted for approval &rarr; approved &rarr; client arrives &rarr;
+  case closed in Salesforce. The typical pipeline takes 12&ndash;48 hours, so a 48-hour window captures
+  the full cycle.<br><br>
+
+  <strong>Key metrics:</strong><br>
+  &bull; <strong>Placements per Bed-Day</strong> = Total placements &divide; total bed-days available (48h lag).
+  The core efficiency metric: how well does each shelter convert available capacity into placements?<br>
+  &bull; <strong>Daily Rate</strong> = Average placements per day.<br>
+  &bull; <strong>Consistency</strong> = Percentage of days with at least one placement.<br>
+  &bull; <strong>Utilization</strong> = Approximate bed occupancy rate.<br>
+  &bull; <strong>Velocity</strong> = On days when placements do happen, how many occur? Higher = batch processing.<br><br>
+
+  <strong>Performance Tiers</strong> are based on terciles of placements-per-bed among shelters with
+  sufficient data (&ge; 3 placements, &ge; 14 days). Shelters below these thresholds are
+  marked &ldquo;Insufficient Data.&rdquo;<br><br>
+
+  <strong>Excluded sites:</strong> EHARC and AIC are excluded because they do not participate in the
+  TBC placement pipeline for singles and families.<br><br>
+
+  <em>Data: TBC placements from Salesforce matched to city bed tracker.
+  Dashboard generated by site_placement_analysis.R</em>
+</div>
+
+</div>
+</body></html>')
+
+writeLines(kpi_html, kpi_path)
+log_msg("  KPI Operations Dashboard saved: ", basename(kpi_path), "\n")
+log_msg("    Shelters: ", nrow(kpi_data), " | System placements/bed-day: ",
+        ifelse(!is.na(sys_placements_per_bed), sprintf("%.4f", sys_placements_per_bed), "N/A"), "\n")
+log_msg("    Tiers: High=", sum(kpi_data$tier == "High Performer"),
+        " Average=", sum(kpi_data$tier == "Average"),
+        " Attention=", sum(kpi_data$tier == "Needs Attention"),
+        " Insuff=", sum(kpi_data$tier == "Insufficient Data"), "\n\n")
 
 
 # =============================================================================
@@ -1710,35 +2057,40 @@ log_msg("  EXECUTIVE SUMMARY -- FOR LEADERSHIP\n")
 log_msg("==========================================================\n\n")
 
 if (!is.null(m1)) {
-  bed_coef <- coef(m1)["beds_lag1"]
-  bed_se   <- coeftable(m1)["beds_lag1", 2]
-  bed_p    <- coeftable(m1)["beds_lag1", 4]
+  bed_coef <- coef(m1)["log_beds_lag1"]
+  bed_se   <- coeftable(m1)["log_beds_lag1", 2]
+  bed_p    <- coeftable(m1)["log_beds_lag1", 4]
   is_sig   <- bed_p < 0.05
 
   log_msg("PRIMARY FINDING:\n")
-  log_msg(sprintf("  Bed availability coefficient (lag-1): %.5f (SE=%.5f, p=%.4f)\n",
+  log_msg(sprintf("  Log-beds coefficient (lag-1): %.5f (SE=%.5f, p=%.4f)\n",
                    bed_coef, bed_se, bed_p))
+  log_msg(sprintf("  Interpretation: Doubling available beds -> ~%.1f%% change in placements\n",
+                   (2^bed_coef - 1) * 100))
   log_msg("\n")
 
   if (is_sig && bed_coef > 0) {
-    # Calculate practical effects
-    pct_change <- (exp(bed_coef) - 1) * 100
+    # Elasticity-like interpretation for log-transformed beds
+    doubling_pct <- (2^bed_coef - 1) * 100
     log_msg("INTERPRETATION (SIGNIFICANT POSITIVE EFFECT):\n")
-    log_msg(sprintf("  Each additional open bed at a shelter is associated with a %.2f%%\n", pct_change))
+    log_msg(sprintf("  Doubling available beds at a shelter is associated with a %.1f%%\n", doubling_pct))
     log_msg("  increase in expected placements the following day.\n\n")
     log_msg("  This means:\n")
     log_msg("  - The placement pipeline IS responsive to bed supply.\n")
     log_msg("  - More openings -> more placements. The system works.\n")
     log_msg("  - The 36-hour lag validates operational timing expectations.\n\n")
 
-    # Marginal beds calculation
+    # Marginal effect at the mean
+    mean_beds <- mean(site_panel$beds_lag1, na.rm = TRUE)
     mean_placed <- mean(site_panel$n_placed)
-    marginal_effect <- mean_placed * bed_coef  # approx marginal effect
-    log_msg(sprintf("  Approximate marginal effect: %.4f additional placements per site-day\n", marginal_effect))
-    log_msg(sprintf("  per additional bed. Over 30 days across %d sites, adding 5 beds at\n",
+    # d(E[y])/d(beds) = beta * E[y] / (beds + 1) at the mean
+    marginal_at_mean <- bed_coef * mean_placed / (mean_beds + 1)
+    log_msg(sprintf("  Marginal effect at the mean (%.1f beds): %.4f additional placements\n",
+                     mean_beds, marginal_at_mean))
+    log_msg(sprintf("  per site-day per additional bed. Over 30 days across %d sites,\n",
                      length(unique(site_panel$shelter_group))))
-    log_msg(sprintf("  one site would generate ~%.1f additional placements.\n\n",
-                     marginal_effect * 5 * 30))
+    log_msg(sprintf("  adding 5 beds at one site would generate ~%.1f additional placements.\n\n",
+                     marginal_at_mean * 5 * 30))
 
   } else if (is_sig && bed_coef < 0) {
     log_msg("INTERPRETATION (SIGNIFICANT NEGATIVE EFFECT):\n")
@@ -1781,20 +2133,22 @@ if (!is.null(m1)) {
 
 # Conversion efficiency summary
 if (nrow(conversion_results) > 0) {
-  top_converter <- conversion_results %>% slice(1)
-  bottom_converter <- conversion_results %>% slice(n())
-  median_coef <- median(conversion_results$conversion_coef, na.rm = TRUE)
+  reliable_converters <- conversion_results %>% filter(reliable)
+  top_converter <- reliable_converters %>% slice_max(conversion_coef, n = 1)
+  bottom_converter <- reliable_converters %>% slice_min(conversion_coef, n = 1)
+  median_coef <- median(reliable_converters$conversion_coef, na.rm = TRUE)
 
   log_msg("SITE CONVERSION EFFICIENCY:\n")
-  log_msg(sprintf("  Across %d shelters, conversion efficiency ranges from %.4f to %.4f.\n",
-                   nrow(conversion_results), min(conversion_results$conversion_coef),
-                   max(conversion_results$conversion_coef)))
+  log_msg(sprintf("  Across %d shelters (%d reliable), conversion efficiency ranges from %.4f to %.4f.\n",
+                   nrow(conversion_results), nrow(reliable_converters),
+                   min(reliable_converters$conversion_coef, na.rm = TRUE),
+                   max(reliable_converters$conversion_coef, na.rm = TRUE)))
   log_msg(sprintf("  Most efficient: %s (coef=%.4f, %d placements)\n",
-                   top_converter$shelter_group, top_converter$conversion_coef,
-                   top_converter$total_placed))
+                   top_converter$shelter_group[1], top_converter$conversion_coef[1],
+                   top_converter$total_placed[1]))
   log_msg(sprintf("  Least efficient: %s (coef=%.4f, %d placements)\n",
-                   bottom_converter$shelter_group, bottom_converter$conversion_coef,
-                   bottom_converter$total_placed))
+                   bottom_converter$shelter_group[1], bottom_converter$conversion_coef[1],
+                   bottom_converter$total_placed[1]))
   log_msg("\n")
   log_msg("  OPERATIONAL IMPLICATION:\n")
   log_msg("  High-conversion sites turn open beds into placements quickly --\n")
@@ -1860,10 +2214,11 @@ cat("Copying conversion outputs to RQ3 root...\n")
 dir.create(file.path(rq3_root, "figures"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(rq3_root, "tables"),  recursive = TRUE, showWarnings = FALSE)
 
-# RQ3 figures: plots 09, 10, 11 + interactive HTML (conversion-specific)
+# RQ3 figures: plots 09, 10, 11, 12 + interactive HTML (conversion-specific)
 rq3_figs <- c("09_site_conversion_rates.png", "10_efficiency_scatter.png",
               "11_conversion_dashboard_heatmap.png",
-              "11_conversion_dashboard_interactive.html")
+              "11_conversion_dashboard_interactive.html",
+              "12_kpi_operations_dashboard.html")
 for (f in rq3_figs) {
   src_f <- file.path(run_dir, "figures", f)
   if (file.exists(src_f)) file.copy(src_f, file.path(rq3_root, "figures", f), overwrite = TRUE)

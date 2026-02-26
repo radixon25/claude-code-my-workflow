@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shelter Placement Operations Dashboard</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         margin: 0; padding: 20px; background: #f5f6f8; color: #333; }
+  .container { max-width: 1400px; margin: 0 auto; }
+
+  /* Header */
+  .header { background: #011f5b; color: white; padding: 24px 32px;
+            border-radius: 10px; margin-bottom: 24px; }
+  .header h1 { margin: 0 0 4px 0; font-size: 1.6em; }
+  .header .subtitle { color: #05cda3; font-size: 0.95em; margin-bottom: 4px; }
+  .header .meta { color: rgba(255,255,255,0.7); font-size: 0.82em; }
+
+  /* System KPI cards */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: white; border-radius: 8px; padding: 20px; text-align: center;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 4px solid #05cda3; }
+  .kpi-card .kpi-value { font-size: 2em; font-weight: bold; color: #011f5b; }
+  .kpi-card .kpi-label { font-size: 0.82em; color: #525252; margin-top: 4px; }
+  .kpi-card .kpi-detail { font-size: 0.75em; color: #999; margin-top: 2px; }
+
+  /* Tier legend */
+  .legend { display: flex; gap: 20px; margin-bottom: 20px; padding: 12px 20px;
+            background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.85em; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+  /* Demographic sections */
+  .demo-section { margin-bottom: 28px; }
+  .demo-title { background: #011f5b; color: white; padding: 10px 20px;
+                border-radius: 8px 8px 0 0; font-size: 1.05em; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; background: white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.06); border-radius: 0 0 8px 8px; overflow: hidden; }
+  th { background: #011f5bee; color: white; padding: 10px 14px; text-align: left;
+       font-size: 0.8em; font-weight: 600; white-space: nowrap; }
+  th .th-sub { font-weight: normal; font-size: 0.85em; color: rgba(255,255,255,0.7); display: block; }
+  td { padding: 10px 14px; border-bottom: 1px solid #eef0f2; font-size: 0.88em; }
+  tr:hover { background: #05cda311; }
+  tr:last-child td { border-bottom: none; }
+
+  /* Tier badges */
+  .tier-badge { display: inline-block; padding: 3px 10px; border-radius: 12px;
+                font-size: 0.78em; font-weight: 600; color: white; }
+
+  /* Metric highlights */
+  .metric-best { color: #15803d; font-weight: 700; }
+  .metric-worst { color: #b91c1c; font-weight: 600; }
+
+  /* Footer */
+  .footer { margin-top: 30px; padding: 16px 20px; font-size: 0.8em; color: #888;
+            background: white; border-radius: 8px; line-height: 1.7;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .footer strong { color: #011f5b; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .legend { flex-wrap: wrap; }
+  }
+  @media (max-width: 600px) {
+    .kpi-row { grid-template-columns: 1fr; }
+    body { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<div class="header">
+  <h1>Shelter Placement Operations Dashboard</h1>
+  <div class="subtitle">Performance KPIs by shelter &mdash; 48-hour bed availability lag</div>
+  <div class="meta">Period: 2026-01-10 to 2026-02-23 (44 days) | Generated: 2026-02-26 10:26 | 32 shelters</div>
+</div>
+
+<!-- System-wide KPI cards -->
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-value">338</div>
+    <div class="kpi-label">Total Placements</div>
+    <div class="kpi-detail">44-day period</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">0.0228</div>
+    <div class="kpi-label">System Placements per Bed-Day</div>
+    <div class="kpi-detail">14,801 total bed-days</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">30</div>
+    <div class="kpi-label">Active Shelters</div>
+    <div class="kpi-detail">with &ge; 1 placement</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">7.7</div>
+    <div class="kpi-label">System Daily Placement Rate</div>
+    <div class="kpi-detail">across all shelters</div>
+  </div>
+</div>
+
+<!-- Tier legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#15803d"></div>High Performer (top tercile)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#525252"></div>Average (middle tercile)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#b91c1c"></div>Needs Attention (bottom tercile)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#999"></div>Insufficient Data (&lt; 3 placements or &lt; 14 days)</div>
+</div>
+
+<div class="demo-section">
+    <div class="demo-title">Men & Women (3 shelters &mdash; 64 total placements)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Placements / Bed-Day<span class="th-sub">(48h lag)</span></th>
+      <th>Daily Rate<span class="th-sub">mean</span></th>
+      <th>Total<span class="th-sub">Placed</span></th>
+      <th>Consistency<span class="th-sub">% days active</span></th>
+      <th>Avg Beds<span class="th-sub">(48h)</span></th>
+      <th>Utilization<span class="th-sub">%</span></th>
+      <th>Velocity<span class="th-sub">per active day</span></th>
+      <th>Tier</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>YWLA</strong></td><td class="metric-best">0.4082</td><td>0.91</td><td>40</td><td>55%</td><td>2.3</td><td>99%</td><td>1.67</td><td><span class="tier-badge" style="background:#15803d">High Performer</span></td></tr>
+<tr><td><strong>North Side Housing & Supportive Services - Michael Segoviano Shelter</strong></td><td>0.2500</td><td>0.20</td><td>9</td><td>18%</td><td>0.8</td><td>98%</td><td>1.12</td><td><span class="tier-badge" style="background:#525252">Average</span></td></tr>
+<tr><td><strong>Lincoln Park Community Shelter - Fullerton</strong></td><td class="metric-worst">0.2419</td><td>0.34</td><td>15</td><td>23%</td><td>1.4</td><td>96%</td><td>1.50</td><td><span class="tier-badge" style="background:#525252">Average</span></td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-title">Men (5 shelters &mdash; 74 total placements)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Placements / Bed-Day<span class="th-sub">(48h lag)</span></th>
+      <th>Daily Rate<span class="th-sub">mean</span></th>
+      <th>Total<span class="th-sub">Placed</span></th>
+      <th>Consistency<span class="th-sub">% days active</span></th>
+      <th>Avg Beds<span class="th-sub">(48h)</span></th>
+      <th>Utilization<span class="th-sub">%</span></th>
+      <th>Velocity<span class="th-sub">per active day</span></th>
+      <th>Tier</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Franciscan Outreach - House of Mary and Joseph</strong></td><td class="metric-best">0.9016</td><td>1.25</td><td>55</td><td>50%</td><td>1.4</td><td>99%</td><td>2.50</td><td><span class="tier-badge" style="background:#15803d">High Performer</span></td></tr>
+<tr><td><strong>Inner Voice - Pioneer House</strong></td><td>0.5556</td><td>0.11</td><td>5</td><td>9%</td><td>0.2</td><td>98%</td><td>1.25</td><td><span class="tier-badge" style="background:#15803d">High Performer</span></td></tr>
+<tr><td><strong>A Safe Haven - Roosevelt</strong></td><td>0.5000</td><td>0.16</td><td>7</td><td>16%</td><td>0.3</td><td>99%</td><td>1.00</td><td><span class="tier-badge" style="background:#15803d">High Performer</span></td></tr>
+<tr><td><strong>Cornerstone - Naomi Men</strong></td><td>0.3750</td><td>0.07</td><td>3</td><td>7%</td><td>0.2</td><td>99%</td><td>1.00</td><td><span class="tier-badge" style="background:#15803d">High Performer</span></td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight Single Men</strong></td><td class="metric-worst">0.1176</td><td>0.09</td><td>4</td><td>7%</td><td>0.8</td><td>99%</td><td>1.33</td><td><span class="tier-badge" style="background:#b91c1c">Needs Attention</span></td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-title">Women (3 shelters &mdash; 35 total placements)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Placements / Bed-Day<span class="th-sub">(48h lag)</span></th>
+      <th>Daily Rate<span class="th-sub">mean</span></th>
+      <th>Total<span class="th-sub">Placed</span></th>
+      <th>Consistency<span class="th-sub">% days active</span></th>
+      <th>Avg Beds<span class="th-sub">(48h)</span></th>
+      <th>Utilization<span class="th-sub">%</span></th>
+      <th>Velocity<span class="th-sub">per active day</span></th>
+      <th>Tier</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Deborah's Place - Teresa</strong></td><td class="metric-best">0.8571</td><td>0.14</td><td>6</td><td>14%</td><td>0.2</td><td>98%</td><td>1.00</td><td><span class="tier-badge" style="background:#15803d">High Performer</span></td></tr>
+<tr><td><strong>Cornerstone - Naomi Women</strong></td><td>0.6667</td><td>0.05</td><td>2</td><td>5%</td><td>0.1</td><td>100%</td><td>1.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight Single Women</strong></td><td class="metric-worst">0.3333</td><td>0.61</td><td>27</td><td>39%</td><td>1.9</td><td>96%</td><td>1.59</td><td><span class="tier-badge" style="background:#525252">Average</span></td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-title">Women & Families (3 shelters &mdash; 19 total placements)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Placements / Bed-Day<span class="th-sub">(48h lag)</span></th>
+      <th>Daily Rate<span class="th-sub">mean</span></th>
+      <th>Total<span class="th-sub">Placed</span></th>
+      <th>Consistency<span class="th-sub">% days active</span></th>
+      <th>Avg Beds<span class="th-sub">(48h)</span></th>
+      <th>Utilization<span class="th-sub">%</span></th>
+      <th>Velocity<span class="th-sub">per active day</span></th>
+      <th>Tier</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Good News Partners - New Life</strong></td><td class="metric-best">0.5455</td><td>0.14</td><td>6</td><td>11%</td><td>0.3</td><td>100%</td><td>1.20</td><td><span class="tier-badge" style="background:#15803d">High Performer</span></td></tr>
+<tr><td><strong>Margaret's Village - Maria Shelter</strong></td><td class="metric-worst">0.2075</td><td>0.25</td><td>11</td><td>23%</td><td>1.2</td><td>98%</td><td>1.10</td><td><span class="tier-badge" style="background:#525252">Average</span></td></tr>
+<tr><td><strong>Christian Community Health Center - Amani House</strong></td><td>0.0909</td><td>0.05</td><td>2</td><td>5%</td><td>0.5</td><td>99%</td><td>1.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-title">Youth (5 shelters &mdash; 12 total placements)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Placements / Bed-Day<span class="th-sub">(48h lag)</span></th>
+      <th>Daily Rate<span class="th-sub">mean</span></th>
+      <th>Total<span class="th-sub">Placed</span></th>
+      <th>Consistency<span class="th-sub">% days active</span></th>
+      <th>Avg Beds<span class="th-sub">(48h)</span></th>
+      <th>Utilization<span class="th-sub">%</span></th>
+      <th>Velocity<span class="th-sub">per active day</span></th>
+      <th>Tier</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>A Safe Haven - West</strong></td><td class="metric-best">0.1250</td><td>0.09</td><td>4</td><td>9%</td><td>0.7</td><td>99%</td><td>1.00</td><td><span class="tier-badge" style="background:#b91c1c">Needs Attention</span></td></tr>
+<tr><td><strong>La Casa Norte - 47th Street</strong></td><td>0.0741</td><td>0.05</td><td>2</td><td>5%</td><td>0.7</td><td>98%</td><td>1.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+<tr><td><strong>A Safe Haven - Youth</strong></td><td>0.0312</td><td>0.02</td><td>1</td><td>2%</td><td>0.7</td><td>99%</td><td>1.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+<tr><td><strong>Unity - Ujima Village</strong></td><td class="metric-worst">0.0245</td><td>0.09</td><td>4</td><td>5%</td><td>3.8</td><td>85%</td><td>2.00</td><td><span class="tier-badge" style="background:#b91c1c">Needs Attention</span></td></tr>
+<tr><td><strong>The Night Ministry - Open Door Youth Shelter</strong></td><td>0.0103</td><td>0.02</td><td>1</td><td>2%</td><td>2.3</td><td>86%</td><td>1.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+</tbody></table></div>
+<div class="demo-section">
+    <div class="demo-title">Families (13 shelters &mdash; 134 total placements)</div>
+    <table>
+    <thead><tr>
+      <th>Shelter</th>
+      <th>Placements / Bed-Day<span class="th-sub">(48h lag)</span></th>
+      <th>Daily Rate<span class="th-sub">mean</span></th>
+      <th>Total<span class="th-sub">Placed</span></th>
+      <th>Consistency<span class="th-sub">% days active</span></th>
+      <th>Avg Beds<span class="th-sub">(48h)</span></th>
+      <th>Utilization<span class="th-sub">%</span></th>
+      <th>Velocity<span class="th-sub">per active day</span></th>
+      <th>Tier</th>
+    </tr></thead>
+    <tbody>
+<tr><td><strong>Primo - Sangamon</strong></td><td class="metric-best">0.4231</td><td>0.25</td><td>11</td><td>20%</td><td>0.6</td><td>100%</td><td>1.22</td><td><span class="tier-badge" style="background:#15803d">High Performer</span></td></tr>
+<tr><td><strong>Featherfist - Hope Village</strong></td><td>0.2500</td><td>0.02</td><td>1</td><td>2%</td><td>0.1</td><td>100%</td><td>1.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+<tr><td><strong>TSA Evangeline Booth Lodge</strong></td><td>0.2500</td><td>0.07</td><td>3</td><td>7%</td><td>0.3</td><td>100%</td><td>1.00</td><td><span class="tier-badge" style="background:#525252">Average</span></td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight I</strong></td><td>0.2069</td><td>0.55</td><td>24</td><td>43%</td><td>2.7</td><td>96%</td><td>1.26</td><td><span class="tier-badge" style="background:#525252">Average</span></td></tr>
+<tr><td><strong>Cornerstone - Sylvia</strong></td><td>0.1392</td><td>0.25</td><td>11</td><td>16%</td><td>1.8</td><td>99%</td><td>1.57</td><td><span class="tier-badge" style="background:#525252">Average</span></td></tr>
+<tr><td><strong>Primo - Madison</strong></td><td>0.1111</td><td>0.09</td><td>4</td><td>9%</td><td>0.8</td><td>100%</td><td>1.00</td><td><span class="tier-badge" style="background:#b91c1c">Needs Attention</span></td></tr>
+<tr><td><strong>Margaret's Village - Believe Shelter</strong></td><td>0.0909</td><td>0.07</td><td>3</td><td>7%</td><td>0.8</td><td>98%</td><td>1.00</td><td><span class="tier-badge" style="background:#b91c1c">Needs Attention</span></td></tr>
+<tr><td><strong>Casa Central La Posada - 1322 N Kedzie</strong></td><td>0.0800</td><td>0.09</td><td>4</td><td>9%</td><td>1.2</td><td>98%</td><td>1.00</td><td><span class="tier-badge" style="background:#b91c1c">Needs Attention</span></td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight II</strong></td><td>0.0086</td><td>0.07</td><td>3</td><td>7%</td><td>8.1</td><td>74%</td><td>1.00</td><td><span class="tier-badge" style="background:#b91c1c">Needs Attention</span></td></tr>
+<tr><td><strong>Olive Branch Mission - Lamplight III</strong></td><td>0.0055</td><td>0.05</td><td>2</td><td>5%</td><td>8.4</td><td>87%</td><td>1.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+<tr><td><strong>MWRD</strong></td><td class="metric-worst">0.0053</td><td>1.55</td><td>68</td><td>68%</td><td>299.4</td><td>46%</td><td>2.27</td><td><span class="tier-badge" style="background:#b91c1c">Needs Attention</span></td></tr>
+<tr><td><strong>New Life CC</strong></td><td>0.0000</td><td>0.00</td><td>0</td><td>0%</td><td>0.2</td><td>100%</td><td>0.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+<tr><td><strong>Cornerstone - Hannah House</strong></td><td>N/A</td><td>0.00</td><td>0</td><td>0%</td><td>0.0</td><td>100%</td><td>0.00</td><td><span class="tier-badge" style="background:#999999">Insufficient Data</span></td></tr>
+</tbody></table></div>
+
+<!-- Footer -->
+<div class="footer">
+  <strong>About This Dashboard</strong><br>
+  This dashboard shows purely descriptive placement KPIs &mdash; no statistical modeling or regression
+  coefficients. It is designed for operational decision-making by leadership.<br><br>
+
+  <strong>What &ldquo;48-hour lag&rdquo; means:</strong> Bed counts reflect the number of beds open at
+  9am <em>two days before</em> a placement is recorded. This accounts for the full operational pipeline:
+
+  bed opens &rarr; candidate identified &rarr; submitted for approval &rarr; approved &rarr; client arrives &rarr;
+  case closed in Salesforce. The typical pipeline takes 12&ndash;48 hours, so a 48-hour window captures
+  the full cycle.<br><br>
+
+  <strong>Key metrics:</strong><br>
+  &bull; <strong>Placements per Bed-Day</strong> = Total placements &divide; total bed-days available (48h lag).
+  The core efficiency metric: how well does each shelter convert available capacity into placements?<br>
+  &bull; <strong>Daily Rate</strong> = Average placements per day.<br>
+  &bull; <strong>Consistency</strong> = Percentage of days with at least one placement.<br>
+  &bull; <strong>Utilization</strong> = Approximate bed occupancy rate.<br>
+  &bull; <strong>Velocity</strong> = On days when placements do happen, how many occur? Higher = batch processing.<br><br>
+
+  <strong>Performance Tiers</strong> are based on terciles of placements-per-bed among shelters with
+  sufficient data (&ge; 3 placements, &ge; 14 days). Shelters below these thresholds are
+  marked &ldquo;Insufficient Data.&rdquo;<br><br>
+
+  <strong>Excluded sites:</strong> EHARC and AIC are excluded because they do not participate in the
+  TBC placement pipeline for singles and families.<br><br>
+
+  <em>Data: TBC placements from Salesforce matched to city bed tracker.
+  Dashboard generated by site_placement_analysis.R</em>
+</div>
+
+</div>
+</body></html>
